@@ -2,3 +2,9 @@
 /grassTools/.vscode
 /grassTools/Library
 /grassTools/Temp
+/grassTools/testgpu.sln
+/grassTools/Assembly-CSharp.csproj
+/grassTools/Assembly-CSharp-Editor.csproj
+/grassTools/GPUInstancer.csproj
+/grassTools/GPUInstancer.Editor.csproj
+/grassTools/grassTools.sln

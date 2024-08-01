@@ -37,44 +37,44 @@ public class DrawMeshData
 public class GrassSystem : MonoBehaviour
 {
     [SerializeField, Header("草的配置数据")]
-    private GrassDataObject grassDataObject;
+    private GrassDataObject m_GrassDataObject;
     [SerializeField, Header("草的模型网格")]
-    private Mesh[] meshs;
+    private Mesh[] m_Meshs;
     [SerializeField, Header("草实际使用的材质")]
-    private Material[] materials;
+    private Material[] m_Materials;
     [SerializeField, Header("光照贴图")]
-    private Texture2D lightmapTex;
+    private Texture2D m_LightmapTex;
     [SerializeField, Header("光照贴图的方向")]
-    private Texture2D lightmapDir;
+    private Texture2D m_LightmapDir;
     [SerializeField, Header("光照贴图的索引")]
-    private int[] lightmapIndexs;
+    private int[] m_LightmapIndexs;
     [SerializeField, Header("草有影子")]
-    private bool[] shadows;
+    private bool[] m_Shadows;
     [SerializeField, Header("草受光照探针影响")]
-    private bool[] lightProbes;
+    private bool[] m_LightProbes;
     [SerializeField, Header("草接受LightMap")]
-    private bool[] lightmapOn;
+    private bool[] m_LightmapOn;
     [SerializeField, Header("草的颜色")]
-    private Color[] colors;
+    private Color[] m_Colors;
     [SerializeField, Header("实际看草的相机，默认为主相机")]
-    private Camera viewGrassCamera;
+    private Camera m_ViewGrassCamera;
     [SerializeField, Header("场景边界")]
-    private Bounds bounds;
+    private Bounds m_Bounds;
     [SerializeField, Header("草的深度")]
-    private int depth = 5;
+    private int m_Depth = 5;
     [SerializeField, Header("显示调试框")]
-    private bool debugDraw = false;
-    private List<DrawMeshData> drawMeshList = null;
-    private List<CullingTreeNode> leaves = null;
-    private HashSet<int> grassVisibleIDList = null;
-    private Vector3 m_cachedCamPos;
-    private Quaternion m_cachedCamRot;
-    private Plane[] cameraFrustumPlanes = new Plane[6];
-    private CullingTreeNode cullingTree;
-    private bool m_Init = false;
-    private List<Matrix4x4>[] tmpMaterixsArray;
-    private List<Vector4>[] tmpLightmapOffsetArray;
-
+    private bool m_DebugDraw = false;
+    private List<DrawMeshData> _DrawMeshList = null;
+    private List<CullingTreeNode> _Leaves = null;
+    private HashSet<int> _GrassVisibleIDList = null;
+    private Vector3 _CachedCamPos;
+    private Quaternion _CachedCamRot;
+    private Plane[] _CameraFrustumPlanes = new Plane[6];
+    private CullingTreeNode _CullingTree;
+    private bool _Init = false;
+    private List<Matrix4x4>[] _TmpMaterixsArray;
+    private List<Vector4>[] _TmpLightmapOffsetArray;
+    private bool _UseOcTree = false;//是否使用OcTree来进行裁剪
     public const int MAX_INDEX = 10000;
     public static readonly string LIGHTMAPST = "unity_LightmapST";
     public static readonly string LIGHTMAP = "unity_Lightmap";
@@ -86,16 +86,16 @@ public class GrassSystem : MonoBehaviour
         {
             return;
         }
-        if (viewGrassCamera == null)
+        if (m_ViewGrassCamera == null)
         {
-            viewGrassCamera = Camera.main;
+            m_ViewGrassCamera = Camera.main;
         }
-        lightmapTex = LightmapSettings.lightmaps[0].lightmapColor;
-        lightmapDir = LightmapSettings.lightmaps[0].lightmapDir;
-        grassVisibleIDList = new HashSet<int>();
-        leaves = new List<CullingTreeNode>();
-        drawMeshList = new List<DrawMeshData>();
-        List<GrassDictionary> datas = grassDataObject.dataList;
+        m_LightmapTex = LightmapSettings.lightmaps[0].lightmapColor;
+        m_LightmapDir = LightmapSettings.lightmaps[0].lightmapDir;
+        _GrassVisibleIDList = new HashSet<int>();
+        _Leaves = new List<CullingTreeNode>();
+        _DrawMeshList = new List<DrawMeshData>();
+        List<GrassDictionary> datas = m_GrassDataObject.dataList;
         
         List<GrassDictionary> newDatas = new List<GrassDictionary>();
         int len = datas.Count;
@@ -123,54 +123,49 @@ public class GrassSystem : MonoBehaviour
             DrawMeshData dm = new DrawMeshData();
             dm.mesh = GetMeshByName(newDatas[i].meshName, out index);
             dm.id = i;
-            dm.material = materials[index];
-            if (lightmapOn[index])
+            dm.material = m_Materials[index];
+            if (m_LightmapOn[index])
             {
                 dm.material.EnableKeyword(LIGHTMAP_KEYWORLD);
             }
-            dm.shadow = shadows[index];
-            dm.lightProbe = lightProbes[index];
+            dm.shadow = m_Shadows[index];
+            dm.lightProbe = m_LightProbes[index];
             dm.materixs = GetMatrixList(data.itemDatas);
             dm.lightmapOffsets = GetLightmapOffset(data.itemDatas);
-            dm.block = GenerateMaterialProperty(lightmapTex, colors[index], dm.lightmapOffsets);
-            drawMeshList.Add(dm);
+            dm.block = GenerateMaterialProperty(m_LightmapTex, m_Colors[index], dm.lightmapOffsets);
+            _DrawMeshList.Add(dm);
         }
-        // tmpMaterixsArray = new List<Matrix4x4>[drawMeshList.Count];
-        // tmpLightmapOffsetArray = new List<Vector4>[drawMeshList.Count];
-        // cullingTree = new CullingTreeNode(bounds, depth, false);
-        // cullingTree.RetrieveAllLeaves(leaves);
-        // for (int i = 0; i < drawMeshList.Count; i++)
-        // {
-        //     int id = drawMeshList[i].id;
-        //     List<Matrix4x4> materixList = drawMeshList[i].materixs;
-        //     for (int j = 0; j < materixList.Count; j++)
-        //     {
-        //         int grassVisibleID = id * MAX_INDEX + j + 1;
-        //         cullingTree.FindLeaf(materixList[j].GetColumn(3), grassVisibleID);
-        //     }
-        //     tmpMaterixsArray[i] = new List<Matrix4x4>();
-        //     tmpLightmapOffsetArray[i] = new List<Vector4>();
-        // }
-        // cullingTree.ClearEmpty();
-        SortMatruix();
-        m_Init = true;
-    }
-
-    private void SortMatruix()
-    {
-        for (int i = 0; i < drawMeshList.Count; i++)
+        if(_UseOcTree)
         {
+            _TmpMaterixsArray = new List<Matrix4x4>[_DrawMeshList.Count];
+            _TmpLightmapOffsetArray = new List<Vector4>[_DrawMeshList.Count];
+            _CullingTree = new CullingTreeNode(m_Bounds, m_Depth, false);
+            _CullingTree.RetrieveAllLeaves(_Leaves);
+            for (int i = 0; i < _DrawMeshList.Count; i++)
+            {
+                int id = _DrawMeshList[i].id;
+                List<Matrix4x4> materixList = _DrawMeshList[i].materixs;
+                for (int j = 0; j < materixList.Count; j++)
+                {
+                    int grassVisibleID = id * MAX_INDEX + j + 1;
+                    _CullingTree.FindLeaf(materixList[j].GetColumn(3), grassVisibleID);
+                }
+                _TmpMaterixsArray[i] = new List<Matrix4x4>();
+                _TmpLightmapOffsetArray[i] = new List<Vector4>();
+            }
+            _CullingTree.ClearEmpty();
         }
+        _Init = true;
     }
 
     private Mesh GetMeshByName(string meshName, out int index)
     {
-        for (int i = 0; i < meshs.Length; i++)
+        for (int i = 0; i < m_Meshs.Length; i++)
         {
-            if (meshs[i].name == meshName)
+            if (m_Meshs[i].name == meshName)
             {
                 index = i;
-                return meshs[i];
+                return m_Meshs[i];
             }
         }
         index = 0;
@@ -209,74 +204,79 @@ public class GrassSystem : MonoBehaviour
 
     void FrustumCulling()
     {
-        if (viewGrassCamera == null)
+        if (m_ViewGrassCamera == null)
         {
-            viewGrassCamera = Camera.main;
+            m_ViewGrassCamera = Camera.main;
         }
-        if (viewGrassCamera == null)
-        {
-            return;
-        }
-        if (m_cachedCamRot == viewGrassCamera.transform.rotation && m_cachedCamPos == viewGrassCamera.transform.position && Application.isPlaying)
+        if (m_ViewGrassCamera == null)
         {
             return;
         }
-        GeometryUtility.CalculateFrustumPlanes(viewGrassCamera, cameraFrustumPlanes);
-        grassVisibleIDList.Clear();
+        if (_CachedCamRot == m_ViewGrassCamera.transform.rotation && _CachedCamPos == m_ViewGrassCamera.transform.position && Application.isPlaying)
+        {
+            return;
+        }
+        GeometryUtility.CalculateFrustumPlanes(m_ViewGrassCamera, _CameraFrustumPlanes);
+        _GrassVisibleIDList.Clear();
         #if UNITY_EDITOR
             BoundsListVis.Clear();
-            cullingTree.RetrieveLeaves(cameraFrustumPlanes, BoundsListVis, grassVisibleIDList);
+            _CullingTree.RetrieveLeaves(_CameraFrustumPlanes, BoundsListVis, _GrassVisibleIDList);
         #else
             cullingTree.RetrieveLeaves(cameraFrustumPlanes, null, grassVisibleIDList);
         #endif
-        m_cachedCamPos = viewGrassCamera.transform.position;
-        m_cachedCamRot = viewGrassCamera.transform.rotation;
+        _CachedCamPos = m_ViewGrassCamera.transform.position;
+        _CachedCamRot = m_ViewGrassCamera.transform.rotation;
     }
 
     void Update()
     {
-        if (m_Init)
+        if (_Init)
         {
-            // FrustumCulling();
-            // for (int i = 0; i < drawMeshList.Count; i++)
-            // {
-            //     DrawMeshData data = drawMeshList[i];
-            //     LightProbeUsage lightProbeUsage = LightProbeUsage.Off;
-            //     if (data.lightProbe)
-            //     {
-            //         lightProbeUsage = LightProbeUsage.BlendProbes;
-            //     }
-            //     List<Matrix4x4> tmpMaterixs = tmpMaterixsArray[i];
-            //     List<Vector4> tmpLightmapOffset = tmpLightmapOffsetArray[i];
-            //     tmpMaterixs.Clear();
-            //     tmpLightmapOffset.Clear();
-            //     List<Matrix4x4> matrixList = data.materixs;
-            //     for (int j = 0; j < matrixList.Count; j++)
-            //     {
-            //         int grassVisibleID = data.id * MAX_INDEX + j + 1;
-            //         if (grassVisibleIDList.Contains(grassVisibleID))
-            //         {
-            //             tmpMaterixs.Add(data.materixs[j]);
-            //             tmpLightmapOffset.Add(data.lightmapOffsets[j]);
-            //         }
-            //     }
-            //     if(tmpMaterixs.Count > 1000)
-            //     {
-            //         Debug.Log("相机中超过1000个草，API不支持绘画超过1000个实例，修改草的数量或降低相机中可以看到的草的密度");
-            //         return;
-            //     }
-            //     if (tmpMaterixs.Count > 0)
-            //     {
-            //         data.block.SetVectorArray(LIGHTMAPST, tmpLightmapOffset.ToArray());
-            //     Graphics.DrawMeshInstanced(data.mesh, 0, data.material, tmpMaterixs, data.block, ShadowCastingMode.Off, data.shadow, 0, null, lightProbeUsage);
-            
-            //     }
-            // }
-
-            for (int i = 0; i < drawMeshList.Count; i++)
+            if (_UseOcTree)
             {
-                DrawMeshData data = drawMeshList[i];
-                Graphics.DrawMeshInstanced(data.mesh, 0, data.material, data.materixs, data.block, ShadowCastingMode.Off, data.shadow, 0, null, LightProbeUsage.Off);
+                FrustumCulling();
+                for (int i = 0; i < _DrawMeshList.Count; i++)
+                {
+                    DrawMeshData data = _DrawMeshList[i];
+                    LightProbeUsage lightProbeUsage = LightProbeUsage.Off;
+                    if (data.lightProbe)
+                    {
+                        lightProbeUsage = LightProbeUsage.BlendProbes;
+                    }
+                    List<Matrix4x4> tmpMaterixs = _TmpMaterixsArray[i];
+                    List<Vector4> tmpLightmapOffset = _TmpLightmapOffsetArray[i];
+                    tmpMaterixs.Clear();
+                    tmpLightmapOffset.Clear();
+                    List<Matrix4x4> matrixList = data.materixs;
+                    for (int j = 0; j < matrixList.Count; j++)
+                    {
+                        int grassVisibleID = data.id * MAX_INDEX + j + 1;
+                        if (_GrassVisibleIDList.Contains(grassVisibleID))
+                        {
+                            tmpMaterixs.Add(data.materixs[j]);
+                            tmpLightmapOffset.Add(data.lightmapOffsets[j]);
+                        }
+                    }
+                    if (tmpMaterixs.Count > 1000)
+                    {
+                        Debug.Log("相机中超过1000个草，API不支持绘画超过1000个实例，修改草的数量或降低相机中可以看到的草的密度");
+                        return;
+                    }
+                    if (tmpMaterixs.Count > 0)
+                    {
+                        data.block.SetVectorArray(LIGHTMAPST, tmpLightmapOffset.ToArray());
+                        Graphics.DrawMeshInstanced(data.mesh, 0, data.material, tmpMaterixs, data.block, ShadowCastingMode.Off, data.shadow, 0, null, lightProbeUsage);
+
+                    }
+                }
+            }
+            if(!_UseOcTree)
+            {
+                for (int i = 0; i < _DrawMeshList.Count; i++)
+                {
+                    DrawMeshData data = _DrawMeshList[i];
+                    Graphics.DrawMeshInstanced(data.mesh, 0, data.material, data.materixs, data.block, ShadowCastingMode.Off, data.shadow, 0, null, LightProbeUsage.Off);
+                }
             }
         }
     }
@@ -286,7 +286,7 @@ public class GrassSystem : MonoBehaviour
     private List<Bounds> BoundsListVis = new List<Bounds>();
     void OnDrawGizmos()
     {
-        if (debugDraw)
+        if (m_DebugDraw)
         {
             Gizmos.color = new Color(0, 1, 0, 0.3f);
             for (int i = 0; i < BoundsListVis.Count; i++)
@@ -294,7 +294,7 @@ public class GrassSystem : MonoBehaviour
                 Gizmos.DrawWireCube(BoundsListVis[i].center, BoundsListVis[i].size);
             }
             Gizmos.color = new Color(1, 0, 0, 0.3f);
-            Gizmos.DrawWireCube(bounds.center, bounds.size);
+            Gizmos.DrawWireCube(m_Bounds.center, m_Bounds.size);
         }
     }
     #endif

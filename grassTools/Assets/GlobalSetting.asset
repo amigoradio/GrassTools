@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 87ac671999acaed4ba2c3bbf33a56728, type: 3}
+  m_Name: GlobalSetting
+  m_EditorClassIdentifier: 
+  brushSize: 10
+  scaleRandomMin: 1
+  scaleRandomMax: 1
+  density: 0.5
+  hitMask:
+    serializedVersion: 2
+    m_Bits: 64
+  grassLayer: 7
+  grassDataPath: Assets/GrassData/
+  grassRootName: GrassRoot
+  grassDataNameSuffix: _GrassData.asset
+  windSpeed: 0
+  windStrength: 0
