@@ -74,11 +74,14 @@ public class GrassSystem : MonoBehaviour
     private bool _Init = false;
     private List<Matrix4x4>[] _TmpMaterixsArray;
     private List<Vector4>[] _TmpLightmapOffsetArray;
-    private bool _UseOcTree = false;//是否使用OcTree来进行裁剪
+    private bool _UseOcTree = true;//是否使用OcTree来进行裁剪
+    private bool _FirstRender = true;
     public const int MAX_INDEX = 10000;
     public static readonly string LIGHTMAPST = "unity_LightmapST";
     public static readonly string LIGHTMAP = "unity_Lightmap";
     public static readonly string LIGHTMAP_KEYWORLD = "LIGHTMAP_ON";
+
+    //private Texture2DArray _TextureArray;
 
     void Start()
     {
@@ -90,8 +93,21 @@ public class GrassSystem : MonoBehaviour
         {
             m_ViewGrassCamera = Camera.main;
         }
+
+
+
         m_LightmapTex = LightmapSettings.lightmaps[0].lightmapColor;
         m_LightmapDir = LightmapSettings.lightmaps[0].lightmapDir;
+
+        //构建一个texture2DArray
+        // int textureWidth = m_LightmapTex.width;
+        // int textureHeight = m_LightmapTex.height;
+        // TextureFormat textFormat = m_LightmapTex.format;
+        // _TextureArray = new Texture2DArray(textureWidth, textureHeight, 2, textFormat, false);
+        // Graphics.CopyTexture(m_LightmapTex, 0, 0, _TextureArray, 0, 0);
+        // Graphics.CopyTexture(m_LightmapDir, 0, 0, _TextureArray, 1, 0);
+
+
         _GrassVisibleIDList = new HashSet<int>();
         _Leaves = new List<CullingTreeNode>();
         _DrawMeshList = new List<DrawMeshData>();
@@ -195,8 +211,10 @@ public class GrassSystem : MonoBehaviour
     private MaterialPropertyBlock GenerateMaterialProperty(Texture2D lightmapTexture, Color color, List<Vector4> lightmapOffset)
     {
         MaterialPropertyBlock block = new MaterialPropertyBlock();
+        //texture2DArray的时候传递_TextureArray
+        //block.SetTexture(LIGHTMAP, _TextureArray);
         block.SetTexture(LIGHTMAP, lightmapTexture);
-        block.SetVectorArray("unity_LightmapST", new Vector4[1023]);
+        block.SetVectorArray(LIGHTMAPST, new Vector4[1023]);
         //block.SetFloat("_Index", lightmapIndex);
         block.SetColor("_Color", color);
         return block;
@@ -212,7 +230,7 @@ public class GrassSystem : MonoBehaviour
         {
             return;
         }
-        if (_CachedCamRot == m_ViewGrassCamera.transform.rotation && _CachedCamPos == m_ViewGrassCamera.transform.position && Application.isPlaying)
+        if (!_FirstRender && _CachedCamRot == m_ViewGrassCamera.transform.rotation && _CachedCamPos == m_ViewGrassCamera.transform.position && Application.isPlaying)
         {
             return;
         }
@@ -226,6 +244,10 @@ public class GrassSystem : MonoBehaviour
         #endif
         _CachedCamPos = m_ViewGrassCamera.transform.position;
         _CachedCamRot = m_ViewGrassCamera.transform.rotation;
+        if (_GrassVisibleIDList.Count > 0)
+        {
+            _FirstRender = false;
+        }
     }
 
     void Update()
