@@ -81,7 +81,8 @@ public class GrassSystem : MonoBehaviour
     public static readonly string LIGHTMAP = "unity_Lightmap";
     public static readonly string LIGHTMAP_KEYWORLD = "LIGHTMAP_ON";
 
-    //private Texture2DArray _TextureArray;
+    private bool _UseTextureArray = false;//是否使用Texture2DArray来存储光照贴图和方向图，需要使用自定义的shader
+    private Texture2DArray _TextureArray;
 
     void Start()
     {
@@ -100,13 +101,15 @@ public class GrassSystem : MonoBehaviour
         m_LightmapDir = LightmapSettings.lightmaps[0].lightmapDir;
 
         //构建一个texture2DArray
-        // int textureWidth = m_LightmapTex.width;
-        // int textureHeight = m_LightmapTex.height;
-        // TextureFormat textFormat = m_LightmapTex.format;
-        // _TextureArray = new Texture2DArray(textureWidth, textureHeight, 2, textFormat, false);
-        // Graphics.CopyTexture(m_LightmapTex, 0, 0, _TextureArray, 0, 0);
-        // Graphics.CopyTexture(m_LightmapDir, 0, 0, _TextureArray, 1, 0);
-
+        if(_UseTextureArray)
+        {
+            int textureWidth = m_LightmapTex.width;
+            int textureHeight = m_LightmapTex.height;
+            TextureFormat textFormat = m_LightmapTex.format;
+            _TextureArray = new Texture2DArray(textureWidth, textureHeight, 2, textFormat, false);
+            Graphics.CopyTexture(m_LightmapTex, 0, 0, _TextureArray, 0, 0);
+            Graphics.CopyTexture(m_LightmapDir, 0, 0, _TextureArray, 1, 0);
+        }
 
         _GrassVisibleIDList = new HashSet<int>();
         _Leaves = new List<CullingTreeNode>();
@@ -148,7 +151,7 @@ public class GrassSystem : MonoBehaviour
             dm.lightProbe = m_LightProbes[index];
             dm.materixs = GetMatrixList(data.itemDatas);
             dm.lightmapOffsets = GetLightmapOffset(data.itemDatas);
-            dm.block = GenerateMaterialProperty(m_LightmapTex, m_Colors[index], dm.lightmapOffsets);
+            dm.block = GenerateMaterialProperty(m_Colors[index], dm.lightmapOffsets);
             _DrawMeshList.Add(dm);
         }
         if(_UseOcTree)
@@ -208,14 +211,20 @@ public class GrassSystem : MonoBehaviour
         return offsetList;
     }
 
-    private MaterialPropertyBlock GenerateMaterialProperty(Texture2D lightmapTexture, Color color, List<Vector4> lightmapOffset)
+    private MaterialPropertyBlock GenerateMaterialProperty(Color color, List<Vector4> lightmapOffset)
     {
         MaterialPropertyBlock block = new MaterialPropertyBlock();
-        //texture2DArray的时候传递_TextureArray
-        //block.SetTexture(LIGHTMAP, _TextureArray);
-        block.SetTexture(LIGHTMAP, lightmapTexture);
-        block.SetVectorArray(LIGHTMAPST, new Vector4[1023]);
-        //block.SetFloat("_Index", lightmapIndex);
+        if(_UseTextureArray)
+        {
+            block.SetTexture("", _TextureArray);
+            block.SetFloat("_Index", 0);
+            block.SetVectorArray("", new Vector4[1023]);
+        }
+        else
+        {
+            block.SetTexture(LIGHTMAP, m_LightmapTex);
+            block.SetVectorArray(LIGHTMAPST, new Vector4[1023]);
+        }
         block.SetColor("_Color", color);
         return block;
     }

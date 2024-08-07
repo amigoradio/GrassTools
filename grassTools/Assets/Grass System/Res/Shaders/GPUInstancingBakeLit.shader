@@ -5,11 +5,8 @@ Shader "Custom/GPUInstancingBakeLit"
 		[MainTexture] _BaseMap("Texture", 2D) = "white" {}
         [MainColor]   _BaseColor("Color", Color) = (1, 1, 1, 1)
         _BumpMap("Normal Map", 2D) = "bump" {}
-		[ToggleUI] _AlphaClip("__clip", Float) = 0.0
+		[ToggleUI] _AlphaClip("__clip", Float) = 1.0
 		_Cutoff("AlphaCutout", Range(0.0, 1.0)) = 0.5
-		//_Textures("Texture Array", 2DArray) = "" {}
-    	//_TextureIndex("Texture Array Index", Range(0,4)) = 0
-    	//_LightmapST("_LightmapST",Vector) = (0,0,0,0)
     }
 
 	SubShader
@@ -57,7 +54,6 @@ Shader "Custom/GPUInstancingBakeLit"
 			{
 				float4 positionCS : SV_POSITION;
 				float3 uv0AndFogCoord : TEXCOORD0; // xy: uv0, z: fogCoord
-				//float2 uv1 : TEXCOORD1; // uv1: lightmap uv
 				DECLARE_LIGHTMAP_OR_SH(staticLightmapUV, vertexSH, 1);
 				half3 normalWS : TEXCOORD2;
 				
@@ -71,20 +67,9 @@ Shader "Custom/GPUInstancingBakeLit"
 
 			CBUFFER_START(UnityPerMaterial)
 				float4 _BaseMap_ST;
-				//float4 _LightmapST;
     			half4 _BaseColor;
-				//half _TextureIndex;
 				half _Cutoff;
 			CBUFFER_END
-
-			//Texture2DArray _Textures;
-			//SAMPLER(sampler_Textures);
-
-			// UNITY_INSTANCING_BUFFER_START(Props)
-            //     UNITY_DEFINE_INSTANCED_PROP(half4, _BaseColor) 
-			// 	UNITY_DEFINE_INSTANCED_PROP(half, _TextureIndex) 
-			// 	UNITY_DEFINE_INSTANCED_PROP(float4, _LightmapST) 
-            // UNITY_INSTANCING_BUFFER_END(Props) 
 
 			TEXTURE2D(_BaseMap);
 			SAMPLER(sampler_BaseMap);
@@ -148,10 +133,7 @@ Shader "Custom/GPUInstancingBakeLit"
 					real sign = input.tangentOS.w * GetOddNegativeScale();
 					o.tangentWS = half4(normalInput.tangentWS.xyz, sign);
 				#endif
-				
-				// half4 l = UNITY_ACCESS_INSTANCED_PROP(Props, _LightmapST);
-            	// o.uv1 = IN.uv1.xy * l.xy + l.zw;
-				
+
 				OUTPUT_LIGHTMAP_UV(input.staticLightmapUV, unity_LightmapST, o.staticLightmapUV);
 				OUTPUT_SH(o.normalWS, o.vertexSH);
 
@@ -160,8 +142,8 @@ Shader "Custom/GPUInstancingBakeLit"
 
 			half4 frag(Varyings i) : SV_Target
 			{
-				UNITY_SETUP_INSTANCE_ID(input);
-				UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
+				UNITY_SETUP_INSTANCE_ID(i);
+				UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(i);
 
 				half2 uv = i.uv0AndFogCoord.xy;
 				
@@ -178,11 +160,6 @@ Shader "Custom/GPUInstancingBakeLit"
 				half3 color = texColor.rgb * _BaseColor.rgb;
 				half alpha = texColor.a * _BaseColor.a;
 
-				//half4 color = SAMPLE_TEXTURE2D_ARRAY(_Textures, sampler_Textures, i.uv1, UNITY_ACCESS_INSTANCED_PROP(_TextureIndex));
-				// half4 tintCol = UNITY_ACCESS_INSTANCED_PROP(_BaseColor);
-				// half3 color = texColor.rgb * tintCol.rgb;
-				// half alpha = texColor.a * tintCol.a;
-				
 				AlphaDiscard(alpha, _Cutoff);
 
 				half4 finalColor = UniversalFragmentBakedLit(inputData, color, alpha, normalTS);
@@ -274,4 +251,5 @@ Shader "Custom/GPUInstancingBakeLit"
     }
 
     FallBack "Hidden/Universal Render Pipeline/FallbackError"
+	CustomEditor "UnityEditor.Rendering.Universal.ShaderGUI.BakedLitShader"
 }
