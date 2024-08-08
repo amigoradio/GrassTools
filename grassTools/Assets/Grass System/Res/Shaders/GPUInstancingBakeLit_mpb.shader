@@ -3,13 +3,14 @@ Shader "Custom/GPUInstancingBakeLit_mpb"
     Properties
     {
 		[MainTexture] _BaseMap("Texture", 2D) = "white" {}
-        [MainColor]   _BaseColor("Color", Color) = (1, 1, 1, 1)
+		[MainColor] _BaseColor("Color", Color) = (1, 1, 1, 1)
         _BumpMap("Normal Map", 2D) = "bump" {}
 		[ToggleUI] _AlphaClip("AlphaClip", Float) = 0.0
 		_Cutoff("AlphaCutout", Range(0.0, 1.0)) = 0.5
-		//_Textures("Texture Array", 2DArray) = "" {}
-    	//_TextureIndex("Texture Array Index", Range(0,4)) = 0
-    	//_LightmapST("_LightmapST",Vector) = (0,0,0,0)
+		_Textures("Texture Array", 2DArray) = "" {}
+    	_TextureIndex("Texture Array Index", Range(0,4)) = 0
+    	_LightmapST("_LightmapST",Vector) = (0,0,0,0)
+		_Color("Color", Color) = (1, 1, 1, 1)
     }
 
 	SubShader
@@ -57,12 +58,12 @@ Shader "Custom/GPUInstancingBakeLit_mpb"
 			{
 				float4 positionCS : SV_POSITION;
 				float3 uv0AndFogCoord : TEXCOORD0; // xy: uv0, z: fogCoord
-				//float2 uv1 : TEXCOORD1; // uv1: lightmap uv
-				DECLARE_LIGHTMAP_OR_SH(staticLightmapUV, vertexSH, 1);
-				half3 normalWS : TEXCOORD2;
+				float2 staticLightmapUV : TEXCOORD1;
+				float3 vertexSH : TEXCOORD2;
+				half3 normalWS : TEXCOORD3;
 				
 				#if defined(_NORMALMAP)
-					half4 tangentWS : TEXCOORD3;
+					half4 tangentWS : TEXCOORD4;
 				#endif
 
 				UNITY_VERTEX_INPUT_INSTANCE_ID
@@ -71,27 +72,90 @@ Shader "Custom/GPUInstancingBakeLit_mpb"
 
 			CBUFFER_START(UnityPerMaterial)
 				float4 _BaseMap_ST;
-				//float4 _LightmapST;
-    			half4 _BaseColor;
-				//half _TextureIndex;
+				half4 _BaseColor;
 				half _Cutoff;
 			CBUFFER_END
 
-			//Texture2DArray _Textures;
-			//SAMPLER(sampler_Textures);
+			Texture2DArray _Textures;
+			SAMPLER(sampler_Textures);
 
-			// UNITY_INSTANCING_BUFFER_START(Props)
-            //     UNITY_DEFINE_INSTANCED_PROP(half4, _BaseColor) 
-			// 	UNITY_DEFINE_INSTANCED_PROP(half, _TextureIndex) 
-			// 	UNITY_DEFINE_INSTANCED_PROP(float4, _LightmapST) 
-            // UNITY_INSTANCING_BUFFER_END(Props) 
+			UNITY_INSTANCING_BUFFER_START(Props)
+                UNITY_DEFINE_INSTANCED_PROP(half4, _Color) 
+				UNITY_DEFINE_INSTANCED_PROP(half, _TextureIndex) 
+				UNITY_DEFINE_INSTANCED_PROP(float4, _LightmapST) 
+            UNITY_INSTANCING_BUFFER_END(Props) 
 
 			TEXTURE2D(_BaseMap);
 			SAMPLER(sampler_BaseMap);
 			TEXTURE2D(_BumpMap);
 			SAMPLER(sampler_BumpMap);
+
+
+
+			// Sample baked and/or realtime lightmap. Non-Direction and Directional if available.
+			half3 SampleLightmapMpb(float2 staticLightmapUV, float2 dynamicLightmapUV, half3 normalWS)
+			{
+				#ifdef UNITY_LIGHTMAP_FULL_HDR
+					bool encodedLightmap = false;
+				#else
+					bool encodedLightmap = true;
+				#endif
+				half4 decodeInstructions = half4(LIGHTMAP_HDR_MULTIPLIER, LIGHTMAP_HDR_EXPONENT, 0.0h, 0.0h);
+				half4 transformCoords = half4(1, 1, 0, 0);
+				float3 diffuseLighting = 0;
+
+				#if defined(LIGHTMAP_ON) && defined(DIRLIGHTMAP_COMBINED)
+					staticLightmapUV = staticLightmapUV * transformCoords.xy + transformCoords.zw;
+					real4 direction = SAMPLE_TEXTURE2D_ARRAY(_Textures, sampler_Textures, staticLightmapUV, 1);
+    				//real4 direction = SAMPLE_TEXTURE2D_LIGHTMAP(lightmapDirTex, lightmapDirSampler, LIGHTMAP_EXTRA_ARGS_USE);
+    				// Remark: baked lightmap is RGBM for now, dynamic lightmap is RGB9E5
+    				real3 illuminance = real3(0.0, 0.0, 0.0);
+    				if (encodedLightmap)
+    				{
+						real4 encodedIlluminance = SAMPLE_TEXTURE2D_ARRAY(_Textures, sampler_Textures, staticLightmapUV, 0).rgba;
+        				//real4 encodedIlluminance = SAMPLE_TEXTURE2D_LIGHTMAP(lightmapTex, lightmapSampler, LIGHTMAP_EXTRA_ARGS_USE).rgba;
+        				illuminance = DecodeLightmap(encodedIlluminance, decodeInstructions);
+    				}
+    				else
+    				{
+						illuminance = SAMPLE_TEXTURE2D_ARRAY(_Textures, sampler_Textures, staticLightmapUV, 0).rgb;
+        				//illuminance = SAMPLE_TEXTURE2D_LIGHTMAP(lightmapTex, lightmapSampler, LIGHTMAP_EXTRA_ARGS_USE).rgb;
+    				}
+
+    				real halfLambert = dot(normalWS, direction.xyz - 0.5) + 0.5;
+    				diffuseLighting += illuminance * halfLambert / max(1e-4, direction.w);
+
+				#elif defined(LIGHTMAP_ON)
+					staticLightmapUV = staticLightmapUV * transformCoords.xy + transformCoords.zw;
+    				// Remark: baked lightmap is RGBM for now, dynamic lightmap is RGB9E5
+    				if (encodedLightmap)
+    				{
+						real4 encodedIlluminance = SAMPLE_TEXTURE2D_ARRAY(_Textures, sampler_Textures, staticLightmapUV, 0).rgba;
+        				//real4 encodedIlluminance = SAMPLE_TEXTURE2D_LIGHTMAP(lightmapTex, lightmapSampler, LIGHTMAP_EXTRA_ARGS_USE).rgba;
+        				diffuseLighting = DecodeLightmap(encodedIlluminance, decodeInstructions);
+    				}
+    				else
+    				{
+						diffuseLighting = SAMPLE_TEXTURE2D_ARRAY(_Textures, sampler_Textures, staticLightmapUV, 0).rgb;
+        				//diffuseLighting = SAMPLE_TEXTURE2D_LIGHTMAP(lightmapTex, lightmapSampler, LIGHTMAP_EXTRA_ARGS_USE).rgb;
+    				}
+				#endif
+
+    			return diffuseLighting;
+			}
 			
-			void InitializeInputData(Varyings input, half3 normalTS, out InputData inputData)
+			half3 SAMPLE_GIMpb(float2 staticLmName, float3 shName, half3 normalWSName)
+			{
+				half3 gi = half3(0, 0, 0);
+				#if defined(LIGHTMAP_ON)
+				 	gi = SampleLightmapMpb(staticLmName, 0, normalWSName);
+				#else
+				 	gi = SampleSHPixel(shName, normalWSName);
+				#endif
+				return gi;
+			}
+
+			void InitializeInputData(Varyings input, half3 normalTS, out InputData inputData) 
 			{
 				inputData = (InputData)0;
 				inputData.positionWS = float3(0, 0, 0);
@@ -108,10 +172,12 @@ Shader "Custom/GPUInstancingBakeLit_mpb"
 				inputData.shadowCoord = float4(0, 0, 0, 0);
 				inputData.fogCoord = input.uv0AndFogCoord.z;
 				inputData.vertexLighting = half3(0, 0, 0);
-				inputData.bakedGI = SAMPLE_GI(input.staticLightmapUV, input.vertexSH, inputData.normalWS);
+				inputData.bakedGI = SAMPLE_GIMpb(input.staticLightmapUV, input.vertexSH, inputData.normalWS);
 				inputData.normalizedScreenSpaceUV = half2(0, 0);
 				inputData.shadowMask = half4(1, 1, 1, 1);
 			}
+
+
 
 			half3 SampleNormal(float2 uv, TEXTURE2D_PARAM(bumpMap, sampler_bumpMap))
 			{
@@ -149,10 +215,10 @@ Shader "Custom/GPUInstancingBakeLit_mpb"
 					o.tangentWS = half4(normalInput.tangentWS.xyz, sign);
 				#endif
 				
-				// half4 l = UNITY_ACCESS_INSTANCED_PROP(Props, _LightmapST);
-            	// o.uv1 = IN.uv1.xy * l.xy + l.zw;
-				
-				OUTPUT_LIGHTMAP_UV(input.staticLightmapUV, unity_LightmapST, o.staticLightmapUV);
+				 half4 lmST = UNITY_ACCESS_INSTANCED_PROP(Props, _LightmapST);
+				#if defined(LIGHTMAP_ON)
+					o.staticLightmapUV = input.staticLightmapUV.xy * lmST.xy + lmST.zw;
+				#endif
 				OUTPUT_SH(o.normalWS, o.vertexSH);
 
 				return o;
@@ -173,15 +239,11 @@ Shader "Custom/GPUInstancingBakeLit_mpb"
 				
 				InputData inputData;
 				InitializeInputData(i, normalTS, inputData);
-				
-				half4 texColor = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, uv);
-				half3 color = texColor.rgb * _BaseColor.rgb;
-				half alpha = texColor.a * _BaseColor.a;
 
-				//half4 color = SAMPLE_TEXTURE2D_ARRAY(_Textures, sampler_Textures, i.uv1, UNITY_ACCESS_INSTANCED_PROP(_TextureIndex));
-				// half4 tintCol = UNITY_ACCESS_INSTANCED_PROP(_BaseColor);
-				// half3 color = texColor.rgb * tintCol.rgb;
-				// half alpha = texColor.a * tintCol.a;
+				half4 texColor = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, uv);
+				half4 tintCol = UNITY_ACCESS_INSTANCED_PROP(Props, _Color);
+				half3 color = texColor.rgb * tintCol.rgb;
+				half alpha = texColor.a * tintCol.a;
 				
 				AlphaDiscard(alpha, _Cutoff);
 
@@ -191,85 +253,6 @@ Shader "Custom/GPUInstancingBakeLit_mpb"
 
 			ENDHLSL
 		}
-
-		Pass
-        {
-            Tags{"LightMode" = "DepthOnly"}
-
-            ZWrite On
-            ColorMask 0
-
-            HLSLPROGRAM
-            #pragma only_renderers gles gles3 glcore d3d11
-            #pragma target 2.0
-
-            //--------------------------------------
-            // GPU Instancing
-            #pragma multi_compile_instancing
-
-            #pragma vertex DepthOnlyVertex
-            #pragma fragment DepthOnlyFragment
-
-            // -------------------------------------
-            // Material Keywords
-            #pragma shader_feature_local_fragment _ALPHATEST_ON
-
-            #include "Packages/com.unity.render-pipelines.universal/Shaders/BakedLitInput.hlsl"
-            #include "Packages/com.unity.render-pipelines.universal/Shaders/DepthOnlyPass.hlsl"
-            ENDHLSL
-        }
-
-        // This pass is used when drawing to a _CameraNormalsTexture texture
-        Pass
-        {
-            Name "DepthNormals"
-            Tags{"LightMode" = "DepthNormals"}
-
-            ZWrite On
-            Cull[_Cull]
-
-            HLSLPROGRAM
-            #pragma only_renderers gles gles3 glcore d3d11
-            #pragma target 2.0
-
-            #pragma vertex DepthNormalsVertex
-            #pragma fragment DepthNormalsFragment
-
-            // -------------------------------------
-            // Material Keywords
-            #pragma shader_feature_local _ _NORMALMAP
-            #pragma shader_feature_local_fragment _ALPHATEST_ON
-
-            //--------------------------------------
-            // GPU Instancing
-            #pragma multi_compile_instancing
-
-            #include "Packages/com.unity.render-pipelines.universal/Shaders/BakedLitInput.hlsl"
-            #include "Packages/com.unity.render-pipelines.universal/Shaders/BakedLitDepthNormalsPass.hlsl"
-            ENDHLSL
-        }
-
-        // This pass it not used during regular rendering, only for lightmap baking.
-        Pass
-        {
-            Name "Meta"
-            Tags{"LightMode" = "Meta"}
-
-            Cull Off
-
-            HLSLPROGRAM
-            #pragma only_renderers gles gles3 glcore d3d11
-            #pragma target 2.0
-
-            #pragma vertex UniversalVertexMeta
-            #pragma fragment UniversalFragmentMetaUnlit
-            #pragma shader_feature EDITOR_VISUALIZATION
-
-            #include "Packages/com.unity.render-pipelines.universal/Shaders/BakedLitInput.hlsl"
-            #include "Packages/com.unity.render-pipelines.universal/Shaders/BakedLitMetaPass.hlsl"
-
-            ENDHLSL
-        }
 
     }
 

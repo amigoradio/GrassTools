@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
+using Unity.Collections;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -80,8 +81,9 @@ public class GrassSystem : MonoBehaviour
     public static readonly string LIGHTMAPST = "unity_LightmapST";
     public static readonly string LIGHTMAP = "unity_Lightmap";
     public static readonly string LIGHTMAP_KEYWORLD = "LIGHTMAP_ON";
+    public static readonly string LIGHTMAPDIR_KEYWORLD = "DIRLIGHTMAP_COMBINED";
 
-    private bool _UseTextureArray = false;//是否使用Texture2DArray来存储光照贴图和方向图，需要使用自定义的shader
+    private bool _UseTextureArray = true;//是否使用Texture2DArray来存储光照贴图和方向图，需要使用自定义mpb的shader
     private Texture2DArray _TextureArray;
 
     void Start()
@@ -109,6 +111,16 @@ public class GrassSystem : MonoBehaviour
             _TextureArray = new Texture2DArray(textureWidth, textureHeight, 2, textFormat, false);
             Graphics.CopyTexture(m_LightmapTex, 0, 0, _TextureArray, 0, 0);
             Graphics.CopyTexture(m_LightmapDir, 0, 0, _TextureArray, 1, 0);
+
+
+        // NativeArray<byte> pixelData1 = m_LightmapTex.GetPixelData<byte>(0);
+        // NativeArray<byte> pixelData2 = m_LightmapDir.GetPixelData<byte>(0);
+                
+        // _TextureArray.SetPixelData(pixelData1, 0, 0, 0);
+        // _TextureArray.SetPixelData(pixelData2, 0, 1, 0);
+
+        _TextureArray.Apply(false, false);
+
         }
 
         _GrassVisibleIDList = new HashSet<int>();
@@ -146,6 +158,11 @@ public class GrassSystem : MonoBehaviour
             if (m_LightmapOn[index])
             {
                 dm.material.EnableKeyword(LIGHTMAP_KEYWORLD);
+                dm.material.EnableKeyword(LIGHTMAPDIR_KEYWORLD);
+                if(_UseTextureArray)
+                {
+                    dm.material.SetTexture("_Textures", _TextureArray);
+                }
             }
             dm.shadow = m_Shadows[index];
             dm.lightProbe = m_LightProbes[index];
@@ -216,9 +233,9 @@ public class GrassSystem : MonoBehaviour
         MaterialPropertyBlock block = new MaterialPropertyBlock();
         if(_UseTextureArray)
         {
-            block.SetTexture("", _TextureArray);
-            block.SetFloat("_Index", 0);
-            block.SetVectorArray("", new Vector4[1023]);
+            //现在的lightmap只有一张，所以没有使用这个参数
+            block.SetFloat("_TextureIndex", 0);
+            block.SetVectorArray("_LightmapST", new Vector4[1023]);
         }
         else
         {
@@ -295,7 +312,14 @@ public class GrassSystem : MonoBehaviour
                     }
                     if (tmpMaterixs.Count > 0)
                     {
-                        data.block.SetVectorArray(LIGHTMAPST, tmpLightmapOffset.ToArray());
+                        if(_UseTextureArray)
+                        {
+                            data.block.SetVectorArray("_LightmapST", tmpLightmapOffset.ToArray());
+                        }
+                        else
+                        {
+                            data.block.SetVectorArray(LIGHTMAPST, tmpLightmapOffset.ToArray());
+                        }
                         Graphics.DrawMeshInstanced(data.mesh, 0, data.material, tmpMaterixs, data.block, ShadowCastingMode.Off, data.shadow, 0, null, lightProbeUsage);
 
                     }

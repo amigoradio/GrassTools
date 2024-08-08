@@ -203,7 +203,7 @@ Shader "Custom/GPUInstancingBakeLit"
             Tags{"LightMode" = "DepthNormals"}
 
             ZWrite On
-            Cull[_Cull]
+            Cull Off
 
             HLSLPROGRAM
             #pragma only_renderers gles gles3 glcore d3d11
