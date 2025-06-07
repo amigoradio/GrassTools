@@ -371,7 +371,7 @@ public class GrassPaintEditor : EditorWindow
         GameObject[] roots = scene.GetRootGameObjects();
         foreach (GameObject obj in roots)
         {
-            if (obj.name.Contains(_Settings.grassRootName))
+            if (obj.activeSelf && obj.name.Contains(_Settings.grassRootName))
             {
                 MeshRenderer[] mr = obj.GetComponentsInChildren<MeshRenderer>();
                 foreach (var item in mr)
@@ -383,11 +383,13 @@ public class GrassPaintEditor : EditorWindow
                         gd.materix = Matrix4x4.TRS(item.transform.position, item.transform.rotation, item.transform.localScale);
                         gd.lightmapScaleOffset = item.lightmapScaleOffset;
                         gd.lightmapIndex = item.lightmapIndex;
-                        datas.AddGrassData(mf.sharedMesh.name, gd);
+                        gd.sortOrder = item.transform.position.z;
+                        datas.AddGrassData(mf.sharedMesh.name, gd, 500);
                     }
                 }
             }
         }
+        datas.SortGrass(500);
         AssetDatabase.CreateAsset(datas, savePath);
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();

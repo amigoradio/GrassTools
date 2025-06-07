@@ -21,6 +21,7 @@ public struct GrassDataItem
     public Matrix4x4 materix;
     public Vector4 lightmapScaleOffset;
     public int lightmapIndex;
+    public float sortOrder;
 }
 
 public class DrawMeshData
@@ -128,31 +129,31 @@ public class GrassSystem : MonoBehaviour
         _DrawMeshList = new List<DrawMeshData>();
         List<GrassDictionary> datas = m_GrassDataObject.dataList;
         
-        List<GrassDictionary> newDatas = new List<GrassDictionary>();
-        int len = datas.Count;
+        //List<GrassDictionary> newDatas = new List<GrassDictionary>();
+        //int len = datas.Count;
+        //for (int i = 0; i < datas.Count; i++)
+        //{
+        //    GrassDictionary data = datas[i];
+        //    int num = data.itemDatas.Count / 1000 + 1;
+        //    for(int j = 0; j < num; j++)
+        //    {
+        //        GrassDictionary gd = new GrassDictionary();
+        //        gd.meshName = data.meshName;
+        //        gd.itemDatas = new List<GrassDataItem>();
+        //        for (int k = j * 1000; k < (j + 1) * 1000 && k < data.itemDatas.Count; k++)
+        //        {
+        //            gd.itemDatas.Add(data.itemDatas[k]);
+        //        }
+        //        newDatas.Add(gd);
+        //    }
+        //}
+        //Debug.Log("newDatas="+newDatas.Count);
         for (int i = 0; i < datas.Count; i++)
         {
             GrassDictionary data = datas[i];
-            int num = data.itemDatas.Count / 1000 + 1;
-            for(int j = 0; j < num; j++)
-            {
-                GrassDictionary gd = new GrassDictionary();
-                gd.meshName = data.meshName;
-                gd.itemDatas = new List<GrassDataItem>();
-                for (int k = j * 1000; k < (j + 1) * 1000 && k < data.itemDatas.Count; k++)
-                {
-                    gd.itemDatas.Add(data.itemDatas[k]);
-                }
-                newDatas.Add(gd);
-            }
-        }
-        //Debug.Log("newDatas="+newDatas.Count);
-        for (int i = 0; i < newDatas.Count; i++)
-        {
-            GrassDictionary data = newDatas[i];
             int index = 0;
             DrawMeshData dm = new DrawMeshData();
-            dm.mesh = GetMeshByName(newDatas[i].meshName, out index);
+            dm.mesh = GetMeshByName(datas[i].meshName, out index);
             dm.id = i;
             dm.material = m_Materials[index];
             if (m_LightmapOn[index])

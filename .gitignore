@@ -8,3 +8,6 @@
 /grassTools/GPUInstancer.csproj
 /grassTools/GPUInstancer.Editor.csproj
 /grassTools/grassTools.sln
+/grassTools/.vs
+/grassTools/*.vsconfig
+/grassTools/obj
