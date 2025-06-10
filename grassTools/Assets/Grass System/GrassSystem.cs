@@ -76,6 +76,7 @@ public class GrassSystem : MonoBehaviour
     public const int MAX_INDEX = 10000;
     public static readonly string LIGHTMAPST = "unity_LightmapST";
     public static readonly string LIGHTMAP = "unity_Lightmap";
+public static readonly string LIGHTMAPDIR = "unity_LightmapInd";
     public static readonly string LIGHTMAP_KEYWORLD = "LIGHTMAP_ON";
     public static readonly string LIGHTMAPDIR_KEYWORLD = "DIRLIGHTMAP_COMBINED";
 
@@ -132,7 +133,11 @@ public class GrassSystem : MonoBehaviour
             if (m_LightmapOn[index])
             {
                 dm.material.EnableKeyword(LIGHTMAP_KEYWORLD);
-                dm.material.EnableKeyword(LIGHTMAPDIR_KEYWORLD);
+				if(m_LightmapDir != null)
+                {
+	                dm.material.EnableKeyword(LIGHTMAPDIR_KEYWORLD);
+                }
+                
                 if(_UseTextureArray)
                 {
                     dm.material.SetTexture("_Textures", _TextureArray);
@@ -205,17 +210,33 @@ public class GrassSystem : MonoBehaviour
     private MaterialPropertyBlock GenerateMaterialProperty(Color color, List<Vector4> lightmapOffset)
     {
         MaterialPropertyBlock block = new MaterialPropertyBlock();
-        if(_UseTextureArray)
+        if (_UseOcTree)
         {
-            //现在的lightmap只有一张，所以没有使用这个参数
-            block.SetFloat("_TextureIndex", 0);
-            block.SetVectorArray("_LightmapST", new Vector4[1023]);
+            if (_UseTextureArray)
+            {
+                //现在的lightmap只有一张，所以没有使用这个参数
+                block.SetFloat("_TextureIndex", 0);
+                block.SetVectorArray("_LightmapST", new Vector4[1023]);
+            }
+            else
+            {
+                block.SetTexture(LIGHTMAP, m_LightmapTex);
+                if(m_LightmapDir != null)
+                {
+                    block.SetTexture(LIGHTMAPDIR, m_LightmapDir);
+                }
+                block.SetVectorArray(LIGHTMAPST, new Vector4[1023]);
+            }
         }
         else
         {
             block.SetTexture(LIGHTMAP, m_LightmapTex);
-            block.SetVectorArray(LIGHTMAPST, new Vector4[1023]);
-        }
+            if(m_LightmapDir != null)
+            {
+                block.SetTexture(LIGHTMAPDIR, m_LightmapDir);
+            }
+            block.SetVectorArray(LIGHTMAPST, lightmapOffset);
+        }        
         block.SetColor("_Color", color);
         return block;
     }
@@ -281,8 +302,8 @@ public class GrassSystem : MonoBehaviour
                     }
                     if (tmpMaterixs.Count > 1023)
                     {
-                        //Debug.Log("相机中超过1023个草，API不支持绘画超过1000个实例，修改草的数量或降低相机中可以看到的草的密度");
-                        //return;
+                        Debug.Log("相机中超过1023个草，API不支持绘画超过1000个实例，修改草的数量或降低相机中可以看到的草的密度");
+                        return;
                     }
                     if (tmpMaterixs.Count > 0)
                     {
