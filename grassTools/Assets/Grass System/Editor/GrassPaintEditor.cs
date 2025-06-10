@@ -1,11 +1,9 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine.SceneManagement;
 using UnityEditorInternal;
-using Unity.EditorCoroutines.Editor;
 using System.IO;
 
 public struct GrassPaintData
@@ -65,12 +63,6 @@ public class GrassPaintEditor : EditorWindow
     private Vector3 _CachedPos;
     private int _SelectFunction = 0;
     private List<GrassPaintData> _GrassDatas = new List<GrassPaintData>();
-
-
-
-    // private static string GrassDataPath = "Assets/Game/GrassData/";
-    // private static string GrassRootName = "GrassRoot";
-    // private static string GrassDataNameSuffix = "_GrassData.asset";
 
     private GrassGlobalSetting _Settings;
 
@@ -384,12 +376,12 @@ public class GrassPaintEditor : EditorWindow
                         gd.lightmapScaleOffset = item.lightmapScaleOffset;
                         gd.lightmapIndex = item.lightmapIndex;
                         gd.sortOrder = item.transform.position.z;
-                        datas.AddGrassData(mf.sharedMesh.name, gd, 500);
+                        datas.AddGrassData(mf.sharedMesh.name, gd);
                     }
                 }
             }
         }
-        datas.SortGrass(500);
+        datas.SortGrass(1023);
         AssetDatabase.CreateAsset(datas, savePath);
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();

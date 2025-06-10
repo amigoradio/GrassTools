@@ -1,12 +1,7 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Reflection;
-using Unity.Collections;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Rendering;
-using UnityEngine.UIElements;
 
 [Serializable]
 public struct GrassDictionary
@@ -98,8 +93,6 @@ public class GrassSystem : MonoBehaviour
             m_ViewGrassCamera = Camera.main;
         }
 
-
-
         m_LightmapTex = LightmapSettings.lightmaps[0].lightmapColor;
         m_LightmapDir = LightmapSettings.lightmaps[0].lightmapDir;
 
@@ -128,26 +121,6 @@ public class GrassSystem : MonoBehaviour
         _Leaves = new List<CullingTreeNode>();
         _DrawMeshList = new List<DrawMeshData>();
         List<GrassDictionary> datas = m_GrassDataObject.dataList;
-        
-        //List<GrassDictionary> newDatas = new List<GrassDictionary>();
-        //int len = datas.Count;
-        //for (int i = 0; i < datas.Count; i++)
-        //{
-        //    GrassDictionary data = datas[i];
-        //    int num = data.itemDatas.Count / 1000 + 1;
-        //    for(int j = 0; j < num; j++)
-        //    {
-        //        GrassDictionary gd = new GrassDictionary();
-        //        gd.meshName = data.meshName;
-        //        gd.itemDatas = new List<GrassDataItem>();
-        //        for (int k = j * 1000; k < (j + 1) * 1000 && k < data.itemDatas.Count; k++)
-        //        {
-        //            gd.itemDatas.Add(data.itemDatas[k]);
-        //        }
-        //        newDatas.Add(gd);
-        //    }
-        //}
-        //Debug.Log("newDatas="+newDatas.Count);
         for (int i = 0; i < datas.Count; i++)
         {
             GrassDictionary data = datas[i];
@@ -306,10 +279,10 @@ public class GrassSystem : MonoBehaviour
                             tmpLightmapOffset.Add(data.lightmapOffsets[j]);
                         }
                     }
-                    if (tmpMaterixs.Count > 1000)
+                    if (tmpMaterixs.Count > 1023)
                     {
-                        Debug.Log("相机中超过1000个草，API不支持绘画超过1000个实例，修改草的数量或降低相机中可以看到的草的密度");
-                        return;
+                        //Debug.Log("相机中超过1023个草，API不支持绘画超过1000个实例，修改草的数量或降低相机中可以看到的草的密度");
+                        //return;
                     }
                     if (tmpMaterixs.Count > 0)
                     {

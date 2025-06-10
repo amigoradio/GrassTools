@@ -9,8 +9,12 @@ public class GrassDataObject : ScriptableObject
 {
     public List<GrassDictionary> dataList;
 
-    //加一个参数，用于是否分批绘制，每500个mesh作为一个批次
-    public void AddGrassData(string meshName, GrassDataItem data, int batchNum = 0)
+    /// <summary>
+    /// 将刷出来的草一颗颗的加入到数据中保存起来
+    /// </summary>
+    /// <param name="meshName"></param>
+    /// <param name="data"></param>
+    public void AddGrassData(string meshName, GrassDataItem data)
     {
         if(dataList == null)
         {
@@ -40,6 +44,10 @@ public class GrassDataObject : ScriptableObject
         }        
     }
 
+    /// <summary>
+    /// 排序保存的数据，如果设置了批次的数量，就对数据进行处理
+    /// </summary>
+    /// <param name="batchNum"></param>
     public void SortGrass(int batchNum = 0) 
     {
         foreach (GrassDictionary gd in dataList)
@@ -53,16 +61,13 @@ public class GrassDataObject : ScriptableObject
             {
                 GrassDictionary oldGd = dataList[i];
                 int num = oldGd.itemDatas.Count / batchNum + 1;
-                //Debug.Log("num=" + num);
                 for (int j = 0; j < num; j++)
                 {
                     GrassDictionary gd = new GrassDictionary();
                     gd.meshName = oldGd.meshName;
                     gd.itemDatas = new List<GrassDataItem>();
-                    //Debug.Log("j=" + j * batchNum + " oldCount=" + oldGd.itemDatas.Count);
                     for (int k = j * batchNum; k < (j + 1) * batchNum && k < oldGd.itemDatas.Count; k++)
                     {
-                        //Debug.Log("k=" + k);
                         gd.itemDatas.Add(oldGd.itemDatas[k]);
                     }
                     if (gd.itemDatas.Count > 0)
@@ -76,7 +81,7 @@ public class GrassDataObject : ScriptableObject
     }
 
     /// <summary>
-    /// 按 sortOrder 升序排序,由近到远
+    /// 按 sortOrder 降序排列,由远到近，符合半透明物体的排序规则
     /// </summary>
     /// <param name="grassList">需要排序的 GrassData 列表</param>
     private void SortBySortOrder(List<GrassDataItem> grassList)
@@ -85,7 +90,7 @@ public class GrassDataObject : ScriptableObject
             return;
         grassList.Sort((a, b) =>
         {
-            return a.sortOrder.CompareTo(b.sortOrder);
+            return b.sortOrder.CompareTo(a.sortOrder);
         });
     }
  
