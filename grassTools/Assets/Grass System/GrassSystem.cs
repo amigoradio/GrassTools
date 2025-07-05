@@ -88,7 +88,7 @@ public class GrassSystem : MonoBehaviour
     private Texture2DArray _TextureArray;
 
     private bool _UseOcTree = true;//是否使用OcTree来进行裁剪
-    private bool _UseTextureArray = true;//是否使用Texture2DArray来存储光照贴图和方向图，需要使用自定义mpb的shader
+    private bool _UseTextureArray = false;//是否使用Texture2DArray来存储光照贴图和方向图，需要使用自定义mpb的shader
     
 
     void Start()

@@ -21,8 +21,10 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: grass_01_Instance
-  m_Shader: {fileID: 4800000, guid: 4636f32c701110f4ba74a393473850a5, type: 3}
-  m_ValidKeywords: []
+  m_Shader: {fileID: 4800000, guid: 53c995bd940a46349a72c19d824fb7ff, type: 3}
+  m_ValidKeywords:
+  - DIRLIGHTMAP_COMBINED
+  - LIGHTMAP_ON
   m_InvalidKeywords: []
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 1
