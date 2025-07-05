@@ -628,7 +628,7 @@ public class GrassPaintEditor : EditorWindow
         {
             newPlant.transform.LookAt(_MainCamera.transform);
         }
-        Undo.RegisterCompleteObjectUndo(newPlant, "Add Grass");
+        Undo.RegisterCreatedObjectUndo(newPlant, "Add Grass");
         GrassPaintData newData = new GrassPaintData();
         newData.position = hitPos;
         newData.obj = newPlant;
