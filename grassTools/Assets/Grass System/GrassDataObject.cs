@@ -1,7 +1,5 @@
-using System;
-using System.Collections;
+ï»¿using System;
 using System.Collections.Generic;
-using Unity.VisualScripting;
 using UnityEngine;
 
 [Serializable]
@@ -10,18 +8,18 @@ public class GrassDataObject : ScriptableObject
     public List<GrassDictionary> dataList;
 
     /// <summary>
-    /// ½«Ë¢³öÀ´µÄ²İÒ»¿Å¿ÅµÄ¼ÓÈëµ½Êı¾İÖĞ±£´æÆğÀ´
+    /// å°†åˆ·å‡ºæ¥çš„è‰ä¸€é¢—é¢—çš„åŠ å…¥åˆ°æ•°æ®ä¸­ä¿å­˜èµ·æ¥
     /// </summary>
     /// <param name="meshName"></param>
     /// <param name="data"></param>
-    public void AddGrassData(string meshName, GrassDataItem data)
+    public void AddGrassData(string meshName, string matName, GrassDataItem data)
     {
-        if(dataList == null)
+        if (dataList == null)
         {
             dataList = new List<GrassDictionary>();
         }
         List<GrassDataItem> items = null;
-        foreach(GrassDictionary datas in dataList)
+        foreach (GrassDictionary datas in dataList)
         {
             if (datas.meshName == meshName)
             {
@@ -33,19 +31,20 @@ public class GrassDataObject : ScriptableObject
         {
             items.Add(data);
         }
-        else 
+        else
         {
             items = new List<GrassDataItem>();
             items.Add(data);
             GrassDictionary gd = new GrassDictionary();
             gd.meshName = meshName;
+            gd.matName = matName;
             gd.itemDatas = items;
             dataList.Add(gd);
-        }        
+        }
     }
 
     /// <summary>
-    /// ÅÅĞò±£´æµÄÊı¾İ£¬Èç¹ûÉèÖÃÁËÅú´ÎµÄÊıÁ¿£¬¾Í¶ÔÊı¾İ½øĞĞ´¦Àí
+    /// æ’åºä¿å­˜çš„æ•°æ®ï¼Œå¦‚æœè®¾ç½®äº†æ‰¹æ¬¡çš„æ•°é‡ï¼Œå°±å¯¹æ•°æ®è¿›è¡Œå¤„ç†
     /// </summary>
     /// <param name="batchNum"></param>
     public void SortGrass(int batchNum = 0) 
@@ -65,6 +64,7 @@ public class GrassDataObject : ScriptableObject
                 {
                     GrassDictionary gd = new GrassDictionary();
                     gd.meshName = oldGd.meshName;
+                    gd.matName = oldGd.matName;
                     gd.itemDatas = new List<GrassDataItem>();
                     for (int k = j * batchNum; k < (j + 1) * batchNum && k < oldGd.itemDatas.Count; k++)
                     {
@@ -81,9 +81,9 @@ public class GrassDataObject : ScriptableObject
     }
 
     /// <summary>
-    /// °´ sortOrder ½µĞòÅÅÁĞ,ÓÉÔ¶µ½½ü£¬·ûºÏ°ëÍ¸Ã÷ÎïÌåµÄÅÅĞò¹æÔò
+    /// æŒ‰ sortOrder é™åºæ’åˆ—,ç”±è¿œåˆ°è¿‘ï¼Œç¬¦åˆåŠé€æ˜ç‰©ä½“çš„æ’åºè§„åˆ™
     /// </summary>
-    /// <param name="grassList">ĞèÒªÅÅĞòµÄ GrassData ÁĞ±í</param>
+    /// <param name="grassList">éœ€è¦æ’åºçš„ GrassData åˆ—è¡¨</param>
     private void SortBySortOrder(List<GrassDataItem> grassList)
     {
         if (grassList == null) 

@@ -1,4 +1,4 @@
-Shader "Custom/GPUInstancingBakeLit_mpb"
+Shader "radio/GPUInstancingBakeLit_mpb"
 {
     Properties
     {
@@ -11,13 +11,20 @@ Shader "Custom/GPUInstancingBakeLit_mpb"
     	_TextureIndex("Texture Array Index", Range(0,4)) = 0
     	_LightmapST("_LightmapST",Vector) = (0,0,0,0)
 		_Color("Color", Color) = (1, 1, 1, 1)
+		_windDirect("WindDirect", Vector) = (0,0,0,0)
+		_windStrengthMin("WindStrengthMin", Range(0 , 1)) = 0
+		_windStrengthMax("WindStrengthMax", Range(0 , 1)) = 1
+		_AnimRange ("Anim Range", Float) = 10.0
+        _FadeRange ("Fade Range", Float) = 1.0
     }
 
 	SubShader
 	{
-		Tags {"Queue"="Geometry" "RenderType" = "Opaque" "IgnoreProjector" = "True" "RenderPipeline" = "UniversalPipeline"}
+		Tags {"Queue"="Transparent+2" "RenderType" = "Transparent" "IgnoreProjector" = "True" "RenderPipeline" = "UniversalPipeline"}
         LOD 100
-		Cull Back
+		Blend SrcAlpha OneMinusSrcAlpha
+        ZWrite Off
+        Cull Off
 
 		Pass
 		{
@@ -74,6 +81,11 @@ Shader "Custom/GPUInstancingBakeLit_mpb"
 				float4 _BaseMap_ST;
 				half4 _BaseColor;
 				half _Cutoff;
+				half2 _windDirect;
+				half _windStrengthMin;
+				half _windStrengthMax;
+				half _AnimRange;
+				half _FadeRange;
 			CBUFFER_END
 
 			Texture2DArray _Textures;
@@ -107,19 +119,17 @@ Shader "Custom/GPUInstancingBakeLit_mpb"
 				#if defined(LIGHTMAP_ON) && defined(DIRLIGHTMAP_COMBINED)
 					staticLightmapUV = staticLightmapUV * transformCoords.xy + transformCoords.zw;
 					real4 direction = SAMPLE_TEXTURE2D_ARRAY(_Textures, sampler_Textures, staticLightmapUV, 1);
-    				//real4 direction = SAMPLE_TEXTURE2D_LIGHTMAP(lightmapDirTex, lightmapDirSampler, LIGHTMAP_EXTRA_ARGS_USE);
+
     				// Remark: baked lightmap is RGBM for now, dynamic lightmap is RGB9E5
     				real3 illuminance = real3(0.0, 0.0, 0.0);
     				if (encodedLightmap)
     				{
 						real4 encodedIlluminance = SAMPLE_TEXTURE2D_ARRAY(_Textures, sampler_Textures, staticLightmapUV, 0).rgba;
-        				//real4 encodedIlluminance = SAMPLE_TEXTURE2D_LIGHTMAP(lightmapTex, lightmapSampler, LIGHTMAP_EXTRA_ARGS_USE).rgba;
         				illuminance = DecodeLightmap(encodedIlluminance, decodeInstructions);
     				}
     				else
     				{
 						illuminance = SAMPLE_TEXTURE2D_ARRAY(_Textures, sampler_Textures, staticLightmapUV, 0).rgb;
-        				//illuminance = SAMPLE_TEXTURE2D_LIGHTMAP(lightmapTex, lightmapSampler, LIGHTMAP_EXTRA_ARGS_USE).rgb;
     				}
 
     				real halfLambert = dot(normalWS, direction.xyz - 0.5) + 0.5;
@@ -131,13 +141,11 @@ Shader "Custom/GPUInstancingBakeLit_mpb"
     				if (encodedLightmap)
     				{
 						real4 encodedIlluminance = SAMPLE_TEXTURE2D_ARRAY(_Textures, sampler_Textures, staticLightmapUV, 0).rgba;
-        				//real4 encodedIlluminance = SAMPLE_TEXTURE2D_LIGHTMAP(lightmapTex, lightmapSampler, LIGHTMAP_EXTRA_ARGS_USE).rgba;
         				diffuseLighting = DecodeLightmap(encodedIlluminance, decodeInstructions);
     				}
     				else
     				{
 						diffuseLighting = SAMPLE_TEXTURE2D_ARRAY(_Textures, sampler_Textures, staticLightmapUV, 0).rgb;
-        				//diffuseLighting = SAMPLE_TEXTURE2D_LIGHTMAP(lightmapTex, lightmapSampler, LIGHTMAP_EXTRA_ARGS_USE).rgb;
     				}
 				#endif
 
@@ -177,8 +185,6 @@ Shader "Custom/GPUInstancingBakeLit_mpb"
 				inputData.shadowMask = half4(1, 1, 1, 1);
 			}
 
-
-
 			half3 SampleNormal(float2 uv, TEXTURE2D_PARAM(bumpMap, sampler_bumpMap))
 			{
 				#ifdef _NORMALMAP
@@ -198,7 +204,15 @@ Shader "Custom/GPUInstancingBakeLit_mpb"
 				UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
 				
 				VertexPositionInputs vertexInput = GetVertexPositionInputs(input.positionOS.xyz);
-				o.positionCS = vertexInput.positionCS;
+
+				float3 centerPos = TransformObjectToWorld(float3(0, 0, 0));
+				float3 worldPos = vertexInput.positionWS;
+				float strength = smoothstep(_windStrengthMin, _windStrengthMax, worldPos.y - centerPos.y);
+				half dist = distance(_WorldSpaceCameraPos, worldPos);
+				half factor = smoothstep(_AnimRange, _AnimRange + _FadeRange, dist);
+				strength = lerp(strength, 0, factor);
+				float2 wind = _windDirect * strength *_SinTime.w;
+				o.positionCS = TransformObjectToHClip(input.positionOS.xyz + float3(wind.x, wind.y, 0));
 				o.uv0AndFogCoord.xy = TRANSFORM_TEX(input.uv, _BaseMap);
 				
 				#if defined(_FOG_FRAGMENT)
@@ -257,5 +271,5 @@ Shader "Custom/GPUInstancingBakeLit_mpb"
     }
 
     FallBack "Hidden/Universal Render Pipeline/FallbackError"
-	CustomEditor "UnityEditor.Rendering.Universal.ShaderGUI.BakedLitShader"
+	//CustomEditor "UnityEditor.Rendering.Universal.ShaderGUI.BakedLitShader"
 }

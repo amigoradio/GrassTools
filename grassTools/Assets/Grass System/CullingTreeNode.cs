@@ -1,8 +1,8 @@
-using System.Collections.Generic;
+锘縰sing System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// 将场景的草使用四叉树进行划分，根据相机视野的变动对草进行剔除
+/// 灏嗗満鏅殑鑽変娇鐢ㄥ洓鍙夋爲杩涜鍒掑垎锛屾牴鎹浉鏈鸿閲庣殑鍙樺姩瀵硅崏杩涜鍓旈櫎
 /// </summary>
 public class CullingTreeNode
 {

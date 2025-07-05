@@ -23,10 +23,6 @@ public class GrassGlobalSetting : ScriptableObject
     //刷的草的父节点的名称
     public string grassRootName = "GrassRoot";
     //草数据的后缀:场景名_GrassData.asset
-    public string grassDataNameSuffix = "_GrassData.asset";
-    //风的速度
-    public float windSpeed = 0f;
-    //风的强度
-    public float windStrength = 0f;
+    public string grassDataNameSuffix = "_GrassData.bytes";
 
 }

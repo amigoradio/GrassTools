@@ -22,6 +22,4 @@ MonoBehaviour:
   grassLayer: 7
   grassDataPath: Assets/GrassData/
   grassRootName: GrassRoot
-  grassDataNameSuffix: _GrassData.asset
-  windSpeed: 0
-  windStrength: 0
+  grassDataNameSuffix: _GrassData.bytes

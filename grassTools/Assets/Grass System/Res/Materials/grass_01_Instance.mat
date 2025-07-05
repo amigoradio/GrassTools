@@ -20,26 +20,22 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Plane_grass
-  m_Shader: {fileID: 4800000, guid: 0ca6dca7396eb48e5849247ffd444914, type: 3}
-  m_ValidKeywords:
-  - _SURFACE_TYPE_TRANSPARENT
+  m_Name: grass_01_Instance
+  m_Shader: {fileID: 4800000, guid: 4636f32c701110f4ba74a393473850a5, type: 3}
+  m_ValidKeywords: []
   m_InvalidKeywords: []
   m_LightmapFlags: 4
-  m_EnableInstancingVariants: 0
+  m_EnableInstancingVariants: 1
   m_DoubleSidedGI: 1
-  m_CustomRenderQueue: 3000
+  m_CustomRenderQueue: -1
   stringTagMap:
     MotionVector: User
-    RenderType: Transparent
   disabledShaderPasses:
   - DistortionVectors
   - TransparentDepthPrepass
   - TransparentDepthPostpass
   - TransparentBackface
   - MOTIONVECTORS
-  - DepthOnly
-  - SHADOWCASTER
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
@@ -52,7 +48,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _BaseMap:
-        m_Texture: {fileID: 2800000, guid: 0bc6cf4680994ce4b9a48a3a3d52fe4a, type: 3}
+        m_Texture: {fileID: 2800000, guid: ddba5d1cca0601049911dfa74cda9755, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _BentNormalMap:
@@ -112,7 +108,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MainTex:
-        m_Texture: {fileID: 2800000, guid: ab417b6a1d87006489ed007eae8df96a, type: 3}
+        m_Texture: {fileID: 2800000, guid: ddba5d1cca0601049911dfa74cda9755, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MaskMap:
@@ -159,6 +155,10 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _Textures:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _ThicknessMap:
         m_Texture: {fileID: 2800000, guid: 2a61a660f141cae4a8ccef2e3ef5b918, type: 3}
         m_Scale: {x: 1, y: 1}
@@ -194,6 +194,7 @@ Material:
     - _AlphaDrag: 0
     - _AlphaDstBlend: 0
     - _AlphaSrcBlend: 1
+    - _AnimRange: 10
     - _Anisotropy: 0
     - _Blend: 0
     - _BlendMode: 0
@@ -252,6 +253,7 @@ Material:
     - _EnableWind: 1
     - _EnergyConservingSpecularColor: 1
     - _EnvironmentReflections: 1
+    - _FadeRange: 1
     - _GlossMapScale: 0
     - _Glossiness: 0
     - _GlossinessSource: 0
@@ -295,6 +297,7 @@ Material:
     - _RenderQueueType: 1
     - _RequireSplitLighting: 0
     - _SSRefractionProjectionModel: 0
+    - _SampleGI: 0
     - _Shininess: 0
     - _ShiverDirectionality: 0.405
     - _ShiverDrag: 0.1
@@ -327,6 +330,7 @@ Material:
     - _SurfaceType: 0
     - _TexWorldScale: 1
     - _TexWorldScaleEmissive: 1
+    - _TextureIndex: 0
     - _Thickness: 0
     - _ThicknessMultiplier: 1
     - _TransmissionEnable: 1
@@ -352,6 +356,8 @@ Material:
     - _ZTestModeDistortion: 4
     - _ZTestTransparent: 4
     - _ZWrite: 0
+    - _windStrengthMax: 1
+    - _windStrengthMin: 0
     m_Colors:
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
     - _BaseColorMap_MipInfo: {r: 0, g: 0, b: 0, a: 0}
@@ -366,6 +372,7 @@ Material:
     - _HealthyColor: {r: 0, g: 0, b: 0, a: 1}
     - _InvPrimScale: {r: 1, g: 1, b: 0, a: 0}
     - _IridescenceThicknessRemap: {r: 0, g: 1, b: 0, a: 0}
+    - _LightmapST: {r: 0, g: 0, b: 0, a: 0}
     - _NewNormal: {r: 0, g: 0, b: 0, a: 0}
     - _SpecColor: {r: 0.5, g: 0.5, b: 0.5, a: 0.5}
     - _SpecularColor: {r: 1, g: 1, b: 1, a: 1}
@@ -378,4 +385,5 @@ Material:
     - _UVMappingMaskEmissive: {r: 1, g: 0, b: 0, a: 0}
     - _VertexNormalMultiply: {r: 0, g: 0, b: 0, a: 0}
     - _WindColorInfluence: {r: 0, g: 0, b: 0, a: 0}
+    - _windDirect: {r: 0.1, g: 0.01, b: 0, a: 0}
   m_BuildTextureStacks: []

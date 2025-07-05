@@ -33,15 +33,16 @@ public class GrassPaintEditor : EditorWindow
    [MenuItem("Tools/刷草/刷草工具 %g", false, 2)]
 	static void Open()
 	{
-	    var window = (GrassPaintEditor) EditorWindow.GetWindowWithRect(typeof(GrassPaintEditor), new Rect(0, 0, 386,520), false, "Paint Grass");
+	    var window = (GrassPaintEditor) EditorWindow.GetWindowWithRect(typeof(GrassPaintEditor), new Rect(0, 0, 500,520), false, "Paint Grass");
 	    window.Show();   
 	}
 
     public static readonly string GlobalSettingPath = "Assets/GlobalSetting.asset";
+    public const int PlantMax = 10;
 
     private GameObject _AddObject;
-    private GameObject[] _Plants = new GameObject[6];
-    private Texture[] _TexObjects = new Texture[6];
+    private GameObject[] _Plants = new GameObject[PlantMax];
+    private Texture[] _TexObjects = new Texture[PlantMax];
     private int _PlantSelect = 0;
     private int _BrushSize = 5;
     private float _ScaleRandomMin = 1f;
@@ -49,8 +50,6 @@ public class GrassPaintEditor : EditorWindow
     private float _Density = 0.5f;
     private LayerMask _HitMask;
     private int _GrassLayer;
-    private float _WindSpeed;
-    private float _WindStrength;
     private int _GrassAmount = 0;
     private GameObject _GrassRoot;
     private bool _FaceToCamera;
@@ -87,8 +86,6 @@ public class GrassPaintEditor : EditorWindow
             _Density = _Settings.density;
             _HitMask = _Settings.hitMask;
             _GrassLayer = _Settings.grassLayer;
-            _WindSpeed = _Settings.windSpeed;
-            _WindStrength = _Settings.windStrength;
             AddExistGrassToData();
         }
         SceneView.duringSceneGui += OnSceneGUI;
@@ -163,7 +160,7 @@ public class GrassPaintEditor : EditorWindow
         _AddObject = (GameObject)EditorGUILayout.ObjectField("", _AddObject, typeof(GameObject), true, GUILayout.Width(160));
         if (GUILayout.Button("+", GUILayout.Width(40)))
         {
-            for (int i = 0; i < 6; i++)
+            for (int i = 0; i < PlantMax; i++)
             { 
                 if (_Plants[i] == null)
                 {
@@ -178,7 +175,7 @@ public class GrassPaintEditor : EditorWindow
         GUILayout.FlexibleSpace();
         GUILayout.EndHorizontal();
 
-        for (int i = 0; i < 6; i++)
+        for (int i = 0; i < PlantMax; i++)
         {
             if (_Plants[i] != null)
                 _TexObjects[i] = AssetPreview.GetAssetPreview(_Plants[i]) as Texture;
@@ -189,11 +186,11 @@ public class GrassPaintEditor : EditorWindow
         GUILayout.BeginHorizontal();
         GUILayout.FlexibleSpace();
         GUILayout.BeginVertical("box", GUILayout.Width(347));
-        _PlantSelect = GUILayout.SelectionGrid(_PlantSelect, _TexObjects, 6, "gridlist", GUILayout.Width(330), GUILayout.Height(55));
+        _PlantSelect = GUILayout.SelectionGrid(_PlantSelect, _TexObjects, PlantMax, "gridlist", GUILayout.Width(530), GUILayout.Height(55));
 
         GUILayout.BeginHorizontal();
 
-        for (int i = 0; i < 6; i++)
+        for (int i = 0; i < PlantMax; i++)
         {
             if (GUILayout.Button("—", GUILayout.Width(52)))
             {
@@ -217,16 +214,13 @@ public class GrassPaintEditor : EditorWindow
         _FaceToCamera = EditorGUILayout.Toggle("面向相机", _FaceToCamera);
         _IsRandomRotate = EditorGUILayout.Toggle("随机旋转", _FaceToCamera? false : _IsRandomRotate);
         _BrushSize = (int)EditorGUILayout.Slider("笔刷大小（1为单棵草）", _BrushSize, 1, 30);
-        _ScaleRandomMin = EditorGUILayout.Slider("随机缩放最小值", _ScaleRandomMin, 0.1f, 2f);
-        _ScaleRandomMax = EditorGUILayout.Slider("随机缩放最大值", _ScaleRandomMax, 0.1f, 2f);
+        _ScaleRandomMin = EditorGUILayout.Slider("随机缩放最小值", _ScaleRandomMin, 0.1f, 5f);
+        _ScaleRandomMax = EditorGUILayout.Slider("随机缩放最大值", _ScaleRandomMax, 0.1f, 5f);
         _Density = EditorGUILayout.Slider("密度", _Density, 0, 10);
         LayerMask tempMask = EditorGUILayout.MaskField("检测的层", InternalEditorUtility.LayerMaskToConcatenatedLayersMask(_HitMask), InternalEditorUtility.layers);
         _HitMask = InternalEditorUtility.ConcatenatedLayersMaskToLayerMask(tempMask);
         _GrassLayer = EditorGUILayout.LayerField("草的层", _GrassLayer);
         EditorGUILayout.Separator();
-        GUILayout.Label("风的设置", GUILayout.Width(145)); 
-        _WindSpeed = EditorGUILayout.Slider("风速", _WindSpeed, -2f, 2f);
-        _WindStrength = EditorGUILayout.Slider("风强度", _WindStrength, -2f, 2f);
 
         GUILayout.EndVertical();
         GUILayout.FlexibleSpace();
@@ -269,6 +263,10 @@ public class GrassPaintEditor : EditorWindow
         if (GUILayout.Button("收集草数据"))
         {
             CollectGrassData();
+        }
+        if (GUILayout.Button("打印草的模型数据"))
+        {
+            PrintGrassModelData();
         }
         if (GUILayout.Button("还原草数据"))
         {
@@ -361,9 +359,17 @@ public class GrassPaintEditor : EditorWindow
         }
         GrassDataObject datas = ScriptableObject.CreateInstance<GrassDataObject>();
         GameObject[] roots = scene.GetRootGameObjects();
+        List<GameObject> objsToProcess = new List<GameObject>();
         foreach (GameObject obj in roots)
         {
-            if (obj.activeSelf && obj.name.Contains(_Settings.grassRootName))
+            if (obj != null)
+            {
+                FindObj(obj.transform, objsToProcess);
+            }
+        }
+        foreach (GameObject obj in objsToProcess)
+        {
+            if (obj.transform.childCount > 0)
             {
                 MeshRenderer[] mr = obj.GetComponentsInChildren<MeshRenderer>();
                 foreach (var item in mr)
@@ -376,21 +382,90 @@ public class GrassPaintEditor : EditorWindow
                         gd.lightmapScaleOffset = item.lightmapScaleOffset;
                         gd.lightmapIndex = item.lightmapIndex;
                         gd.sortOrder = item.transform.position.z;
-                        datas.AddGrassData(mf.sharedMesh.name, gd);
+                        datas.AddGrassData(mf.sharedMesh.name, item.sharedMaterial.name, gd);
                     }
                 }
             }
         }
         datas.SortGrass(1023);
-        AssetDatabase.CreateAsset(datas, savePath);
-        AssetDatabase.SaveAssets();
+        byte[] grassDatas = GrassUtil.ToJsonBytes(datas);
+        byte[] compressedGrassDatas = GrassUtil.Compress(grassDatas);
+        File.WriteAllBytes(savePath, compressedGrassDatas);
+        AssetDatabase.ImportAsset(savePath);
+
         AssetDatabase.Refresh();
+        EditorUtility.DisplayDialog("收集数据", "草数据已收集，并生成文件", "确定");
     }
 
     /// <summary>
-    /// 从保存的数据中恢复草
+    /// 是否是需要过滤掉的节点
     /// </summary>
-    private void RestoreGrassData()
+    /// <param name="fileName"></param>
+    /// <returns></returns>
+    private bool IsFilterObj(string fileName)
+    {
+        if (fileName.Contains("Low_Occ"))
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 递归查找对象，将隐藏的对象记录下来
+    /// </summary>
+    /// <param name="root"></param>
+    /// <param name="objsToProcess"></param>
+    private void FindObj(Transform root, List<GameObject> objsToProcess)
+    {
+        GameObject obj = root.gameObject;
+        if (!obj.activeSelf)
+        {
+            return;
+        }
+        if (IsFilterObj(obj.name))
+        {
+            return;
+        }
+        if (obj.name.Contains(_Settings.grassRootName))
+        {
+            objsToProcess.Add(obj);
+        }
+        else
+        {
+            for (int i = 0; i < root.childCount; ++i)
+            {
+                FindObj(root.GetChild(i), objsToProcess);
+            }
+        }
+    }
+
+    private void PrintGrassModelData()
+    {
+        GrassDataObject datas = LoadGrassData();
+        if (datas != null)
+        {
+            List<string> modelData = new List<string>();
+            for (int i = 0; i < datas.dataList.Count; i++)
+            {
+                GrassDictionary data = datas.dataList[i];
+                string key = $"{data.meshName} # {data.matName}";
+                if (!modelData.Contains(key))
+                {
+                    modelData.Add(key);
+                }
+            }
+            foreach (string key in modelData)
+            {
+                Debug.Log($"GrassData model info=" + key);
+            }
+        }
+    }
+
+    private GrassDataObject LoadGrassData()
     {
         Scene scene = SceneManager.GetActiveScene();
         string dataName = scene.name;
@@ -398,68 +473,89 @@ public class GrassPaintEditor : EditorWindow
         FileInfo f = new FileInfo(loadPath);
         if (f.Exists)
         {
-            GrassDataObject datas = (GrassDataObject)AssetDatabase.LoadAssetAtPath(loadPath, typeof(GrassDataObject));
-            if (datas != null)
-            {
-                _GrassDatas.Clear();
-                for (int i = 0; i < datas.dataList.Count; i++)
-                {
-                    _GrassRoot = new GameObject(_Settings.grassRootName);
-                    _GrassRoot.transform.position = Vector3.zero;
-                    _GrassRoot.transform.rotation = Quaternion.identity;
-                    _GrassRoot.transform.localScale = Vector3.one;
-                    GrassDictionary data = datas.dataList[i];
-                    GameObject prefab = null;
-                    for (int j = 0; j < _Plants.Length; j++)
-                    {
-                        GameObject obj = _Plants[j];
-                        MeshRenderer mr = obj.GetComponentInChildren<MeshRenderer>();
-                        if (mr != null)
-                        {
-                            MeshFilter mf = mr.GetComponent<MeshFilter>();
-                            if (mf != null && mf.sharedMesh != null && mf.sharedMesh.name == data.meshName)
-                            {
-                                prefab = obj;
-                                break;
-                            }
-                        }
-                    }
-                    if (prefab != null)
-                    {
-                        for (int j = 0; j < data.itemDatas.Count; j++)
-                        {
-                            GrassDataItem dataItem = data.itemDatas[j];
-                            GameObject go = new GameObject(prefab.name + "_" + j.ToString());
-                            go.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
-                            go.transform.localScale = Vector3.one;
-                            go.transform.SetParent(_GrassRoot.transform);
-                            go.transform.position = GetPositionFromMatrix(dataItem.materix);
-                            go.transform.rotation = GetRotationFromMatrix(dataItem.materix);
-                            go.transform.localScale = GetScaleFromMatrix(dataItem.materix);
-                            GameObject newPlant = Instantiate(prefab);
-                            newPlant.transform.SetParent(go.transform);
-                            newPlant.name = "Grass";
-                            SetLayerRecursively(go, _GrassLayer);
-                            if (_MainCamera != null && _FaceToCamera)
-                            {
-                                newPlant.transform.LookAt(_MainCamera.transform);
-                            }
-                            GrassPaintData newData = new GrassPaintData();
-                            newData.position = go.transform.position;
-                            newData.obj = go;
-                            _GrassDatas.Add(newData);
-                        }
-                    }
-                    else
-                    {
-                        Debug.LogError("没有找到对应的prefab");
-                    }
-                }
-            }
+            byte[] compressedGrassDatas = File.ReadAllBytes(loadPath);
+            byte[] grassDatas = GrassUtil.Decompress(compressedGrassDatas);
+            GrassDataObject datas = GrassUtil.FromJsonBytes<GrassDataObject>(grassDatas);
+            return datas;
         }
         else
         {
             Debug.Log("数据文件不已经存在！");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// 从保存的数据中恢复草
+    /// </summary>
+    private void RestoreGrassData()
+    {
+        GrassDataObject datas = LoadGrassData();
+        if (datas != null)
+        {
+            _GrassDatas.Clear();
+            for (int i = 0; i < datas.dataList.Count; i++)
+            {
+                _GrassRoot = new GameObject(_Settings.grassRootName);
+                _GrassRoot.transform.position = Vector3.zero;
+                _GrassRoot.transform.rotation = Quaternion.identity;
+                _GrassRoot.transform.localScale = Vector3.one;
+                GrassDictionary data = datas.dataList[i];
+
+                GameObject prefab = null;
+                for (int j = 0; j < _Plants.Length; j++)
+                {
+                    GameObject obj = _Plants[j];
+                    MeshRenderer mr = obj.GetComponentInChildren<MeshRenderer>();
+                    if (mr != null)
+                    {
+                        MeshFilter mf = mr.GetComponent<MeshFilter>();
+                        if (mf != null && mf.sharedMesh != null && mf.sharedMesh.name == data.meshName && mr.sharedMaterial.name == data.matName)
+                        {
+                            prefab = obj;
+                            break;
+                        }
+                    }
+                }
+                if (prefab != null)
+                {
+                    for (int j = 0; j < data.itemDatas.Count; j++)
+                    {
+                        GrassDataItem dataItem = data.itemDatas[j];
+                        GameObject go = new GameObject();
+#if UNITY_EDITOR
+                        go.name = data.meshName + "_" + j.ToString();
+#endif
+                        go.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
+                        go.transform.localScale = Vector3.one;
+                        go.transform.SetParent(_GrassRoot.transform);
+                        go.transform.position = GetPositionFromMatrix(dataItem.materix);
+                        go.transform.rotation = GetRotationFromMatrix(dataItem.materix);
+                        go.transform.localScale = GetScaleFromMatrix(dataItem.materix);
+                        GameObject newPlant = Instantiate(prefab);
+                        newPlant.transform.SetParent(go.transform);
+#if UNITY_EDITOR
+                        newPlant.name = "Grass";
+#endif
+                        newPlant.transform.localPosition = Vector3.zero;
+                        newPlant.transform.localScale = Vector3.one;
+                        newPlant.transform.localEulerAngles = Vector3.zero;
+                        SetLayerRecursively(go, _GrassLayer);
+                        if (_MainCamera != null && _FaceToCamera)
+                        {
+                            newPlant.transform.LookAt(_MainCamera.transform);
+                        }
+                        GrassPaintData newData = new GrassPaintData();
+                        newData.position = go.transform.position;
+                        newData.obj = go;
+                        _GrassDatas.Add(newData);
+                    }
+                }
+                else
+                {
+                    Debug.LogError("没有找到对应的prefab=" + data.matName + " " + data.meshName);
+                }
+            }
         }
     }
 
@@ -633,6 +729,7 @@ public class GrassPaintEditor : EditorWindow
         newData.position = hitPos;
         newData.obj = newPlant;
         _GrassDatas.Add(newData);
+        SceneView.RepaintAll();
     }
 
     /// <summary>

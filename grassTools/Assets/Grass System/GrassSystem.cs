@@ -1,12 +1,15 @@
 using System;
 using System.Collections.Generic;
+using System.Resources;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.SceneManagement;
 
 [Serializable]
 public struct GrassDictionary
 {
     public string meshName;
+    public string matName;
     public List<GrassDataItem> itemDatas;
 }
 
@@ -33,8 +36,8 @@ public class DrawMeshData
 
 public class GrassSystem : MonoBehaviour
 {
-    [SerializeField, Header("草的配置数据")]
-    private GrassDataObject m_GrassDataObject;
+    [SerializeField]
+    private TextAsset m_Data;
     [SerializeField, Header("草的模型网格")]
     private Mesh[] m_Meshs;
     [SerializeField, Header("草实际使用的材质")]
@@ -61,6 +64,7 @@ public class GrassSystem : MonoBehaviour
     private int m_Depth = 5;
     [SerializeField, Header("显示调试框")]
     private bool m_DebugDraw = false;
+
     private List<DrawMeshData> _DrawMeshList = null;
     private List<CullingTreeNode> _Leaves = null;
     private HashSet<int> _GrassVisibleIDList = null;
@@ -71,17 +75,21 @@ public class GrassSystem : MonoBehaviour
     private bool _Init = false;
     private List<Matrix4x4>[] _TmpMaterixsArray;
     private List<Vector4>[] _TmpLightmapOffsetArray;
-    private bool _UseOcTree = true;//是否使用OcTree来进行裁剪
+
+    
     private bool _FirstRender = true;
     public const int MAX_INDEX = 10000;
     public static readonly string LIGHTMAPST = "unity_LightmapST";
     public static readonly string LIGHTMAP = "unity_Lightmap";
-public static readonly string LIGHTMAPDIR = "unity_LightmapInd";
+    public static readonly string LIGHTMAPDIR = "unity_LightmapInd";
     public static readonly string LIGHTMAP_KEYWORLD = "LIGHTMAP_ON";
     public static readonly string LIGHTMAPDIR_KEYWORLD = "DIRLIGHTMAP_COMBINED";
-
-    private bool _UseTextureArray = true;//是否使用Texture2DArray来存储光照贴图和方向图，需要使用自定义mpb的shader
+    private GrassDataObject _GrassDataObject;
     private Texture2DArray _TextureArray;
+
+    private bool _UseOcTree = true;//是否使用OcTree来进行裁剪
+    private bool _UseTextureArray = true;//是否使用Texture2DArray来存储光照贴图和方向图，需要使用自定义mpb的shader
+    
 
     void Start()
     {
@@ -93,35 +101,53 @@ public static readonly string LIGHTMAPDIR = "unity_LightmapInd";
         {
             m_ViewGrassCamera = Camera.main;
         }
+        if (m_Data == null)
+        {
+            Scene scene = SceneManager.GetActiveScene();
+            string dataFileName = $"{scene.name}_GrassData";
+            TextAsset textAsset = Resources.Load<TextAsset>(dataFileName);
+            if (textAsset != null)
+            {
+                byte[] grassDatas = GrassUtil.Decompress(textAsset.bytes);
+                _GrassDataObject = GrassUtil.FromJsonBytes<GrassDataObject>(grassDatas);
+                BuildInitData();
+            }
+            else
+            {
+                Debug.LogError("testg download grassdata failed filename=" + dataFileName);
+            }
+        }
+        else
+        {
+            byte[] grassDatas = GrassUtil.Decompress(m_Data.bytes);
+            _GrassDataObject = GrassUtil.FromJsonBytes<GrassDataObject>(grassDatas);
+            BuildInitData();
+        }
+    }
 
+    private void BuildInitData()
+    {
         m_LightmapTex = LightmapSettings.lightmaps[0].lightmapColor;
         m_LightmapDir = LightmapSettings.lightmaps[0].lightmapDir;
 
         //构建一个texture2DArray
-        if(_UseTextureArray)
+        if (_UseTextureArray)
         {
             int textureWidth = m_LightmapTex.width;
             int textureHeight = m_LightmapTex.height;
             TextureFormat textFormat = m_LightmapTex.format;
             _TextureArray = new Texture2DArray(textureWidth, textureHeight, 2, textFormat, false);
             Graphics.CopyTexture(m_LightmapTex, 0, 0, _TextureArray, 0, 0);
-            Graphics.CopyTexture(m_LightmapDir, 0, 0, _TextureArray, 1, 0);
-
-
-        // NativeArray<byte> pixelData1 = m_LightmapTex.GetPixelData<byte>(0);
-        // NativeArray<byte> pixelData2 = m_LightmapDir.GetPixelData<byte>(0);
-                
-        // _TextureArray.SetPixelData(pixelData1, 0, 0, 0);
-        // _TextureArray.SetPixelData(pixelData2, 0, 1, 0);
-
-        _TextureArray.Apply(false, false);
-
+            if (m_LightmapDir != null)
+            {
+                Graphics.CopyTexture(m_LightmapDir, 0, 0, _TextureArray, 1, 0);
+            }
+            _TextureArray.Apply(false, false);
         }
-
         _GrassVisibleIDList = new HashSet<int>();
         _Leaves = new List<CullingTreeNode>();
         _DrawMeshList = new List<DrawMeshData>();
-        List<GrassDictionary> datas = m_GrassDataObject.dataList;
+        List<GrassDictionary> datas = _GrassDataObject.dataList;
         for (int i = 0; i < datas.Count; i++)
         {
             GrassDictionary data = datas[i];
@@ -129,16 +155,16 @@ public static readonly string LIGHTMAPDIR = "unity_LightmapInd";
             DrawMeshData dm = new DrawMeshData();
             dm.mesh = GetMeshByName(datas[i].meshName, out index);
             dm.id = i;
-            dm.material = m_Materials[index];
+            dm.material = GetMatrialByName(datas[i].matName + "_Instance");
             if (m_LightmapOn[index])
             {
                 dm.material.EnableKeyword(LIGHTMAP_KEYWORLD);
-				if(m_LightmapDir != null)
+                if (m_LightmapDir != null)
                 {
-	                dm.material.EnableKeyword(LIGHTMAPDIR_KEYWORLD);
+                    dm.material.EnableKeyword(LIGHTMAPDIR_KEYWORLD);
                 }
-                
-                if(_UseTextureArray)
+
+                if (_UseTextureArray)
                 {
                     dm.material.SetTexture("_Textures", _TextureArray);
                 }
@@ -150,7 +176,7 @@ public static readonly string LIGHTMAPDIR = "unity_LightmapInd";
             dm.block = GenerateMaterialProperty(m_Colors[index], dm.lightmapOffsets);
             _DrawMeshList.Add(dm);
         }
-        if(_UseOcTree)
+        if (_UseOcTree)
         {
             _TmpMaterixsArray = new List<Matrix4x4>[_DrawMeshList.Count];
             _TmpLightmapOffsetArray = new List<Vector4>[_DrawMeshList.Count];
@@ -187,6 +213,18 @@ public static readonly string LIGHTMAPDIR = "unity_LightmapInd";
         return null;
     }
 
+    private Material GetMatrialByName(string matName)
+    {
+        for (int i = 0; i < m_Materials.Length; i++)
+        {
+            if (m_Materials[i].name == matName)
+            {
+                return m_Materials[i];
+            }
+        }
+        return null;
+    }
+
     private List<Matrix4x4> GetMatrixList(List<GrassDataItem> datas)
     {
         List<Matrix4x4> matrixList = new List<Matrix4x4>();
@@ -214,7 +252,7 @@ public static readonly string LIGHTMAPDIR = "unity_LightmapInd";
         {
             if (_UseTextureArray)
             {
-                //现在的lightmap只有一张，所以没有使用这个参数
+                //现在的lightmap只有一张，所以没有使用这个参数m_LightmapIndexs
                 block.SetFloat("_TextureIndex", 0);
                 block.SetVectorArray("_LightmapST", new Vector4[1023]);
             }
@@ -257,12 +295,12 @@ public static readonly string LIGHTMAPDIR = "unity_LightmapInd";
         }
         GeometryUtility.CalculateFrustumPlanes(m_ViewGrassCamera, _CameraFrustumPlanes);
         _GrassVisibleIDList.Clear();
-        #if UNITY_EDITOR
-            BoundsListVis.Clear();
-            _CullingTree.RetrieveLeaves(_CameraFrustumPlanes, BoundsListVis, _GrassVisibleIDList);
-        #else
-            cullingTree.RetrieveLeaves(cameraFrustumPlanes, null, grassVisibleIDList);
-        #endif
+#if UNITY_EDITOR
+        BoundsListVis.Clear();
+        _CullingTree.RetrieveLeaves(_CameraFrustumPlanes, BoundsListVis, _GrassVisibleIDList);
+#else
+        _CullingTree.RetrieveLeaves(_CameraFrustumPlanes, null, _GrassVisibleIDList);
+#endif
         _CachedCamPos = m_ViewGrassCamera.transform.position;
         _CachedCamRot = m_ViewGrassCamera.transform.rotation;
         if (_GrassVisibleIDList.Count > 0)
@@ -300,11 +338,6 @@ public static readonly string LIGHTMAPDIR = "unity_LightmapInd";
                             tmpLightmapOffset.Add(data.lightmapOffsets[j]);
                         }
                     }
-                    if (tmpMaterixs.Count > 1023)
-                    {
-                        Debug.Log("相机中超过1023个草，API不支持绘画超过1000个实例，修改草的数量或降低相机中可以看到的草的密度");
-                        return;
-                    }
                     if (tmpMaterixs.Count > 0)
                     {
                         if(_UseTextureArray)
@@ -316,11 +349,10 @@ public static readonly string LIGHTMAPDIR = "unity_LightmapInd";
                             data.block.SetVectorArray(LIGHTMAPST, tmpLightmapOffset.ToArray());
                         }
                         Graphics.DrawMeshInstanced(data.mesh, 0, data.material, tmpMaterixs, data.block, ShadowCastingMode.Off, data.shadow, 0, null, lightProbeUsage);
-
                     }
                 }
             }
-            if(!_UseOcTree)
+            else
             {
                 for (int i = 0; i < _DrawMeshList.Count; i++)
                 {
