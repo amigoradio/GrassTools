@@ -8,6 +8,7 @@ Shader "Custom/GPUInstancingBakeLitAni"
         _BumpMap("Normal Map", 2D) = "bump" {}
 
         _windDirect("WindDirect", Vector) = (0,0,0,0)
+        _windSpeed("WindSpeed", Float) = 1.0
 		_windStrengthMin("WindStrengthMin", Range(0 , 1)) = 0
 		_windStrengthMax("WindStrengthMax", Range(0 , 1)) = 1
 		_AnimRange ("Anim Range", Float) = 10.0
@@ -119,6 +120,7 @@ Shader "Custom/GPUInstancingBakeLitAni"
                 half _Metallic;
                 half _Surface;
 				half2 _windDirect;
+                half _windSpeed;
 				half _windStrengthMin;
 				half _windStrengthMax;
 				half _AnimRange;
@@ -215,7 +217,8 @@ Shader "Custom/GPUInstancingBakeLitAni"
 				half dist = distance(_WorldSpaceCameraPos, worldPos);
 				half factor = smoothstep(_AnimRange, _AnimRange + _FadeRange, dist);
 				strength = lerp(strength, 0, factor);
-				float2 wind = _windDirect * strength *_SinTime.w;
+                float customSin = sin(_Time.y * _windSpeed);
+				float2 wind = _windDirect * strength * customSin;
 				output.positionCS = TransformObjectToHClip(input.positionOS.xyz + float3(wind.x, wind.y, 0));
 
                 output.uv0AndFogCoord.xy = TRANSFORM_TEX(input.uv, _BaseMap);

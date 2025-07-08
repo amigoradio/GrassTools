@@ -36,8 +36,10 @@ public class DrawMeshData
 
 public class GrassSystem : MonoBehaviour
 {
+#if UNITY_EDITOR
     [SerializeField]
     private TextAsset m_Data;
+#endif
     [SerializeField, Header("草的模型网格")]
     private Mesh[] m_Meshs;
     [SerializeField, Header("草实际使用的材质")]
@@ -101,8 +103,10 @@ public class GrassSystem : MonoBehaviour
         {
             m_ViewGrassCamera = Camera.main;
         }
+#if UNITY_EDITOR
         if (m_Data == null)
         {
+#endif
             Scene scene = SceneManager.GetActiveScene();
             string dataFileName = $"{scene.name}_GrassData";
             TextAsset textAsset = Resources.Load<TextAsset>(dataFileName);
@@ -116,6 +120,7 @@ public class GrassSystem : MonoBehaviour
             {
                 Debug.LogError("testg download grassdata failed filename=" + dataFileName);
             }
+#if UNITY_EDITOR
         }
         else
         {
@@ -123,6 +128,7 @@ public class GrassSystem : MonoBehaviour
             _GrassDataObject = GrassUtil.FromJsonBytes<GrassDataObject>(grassDatas);
             BuildInitData();
         }
+#endif
     }
 
     private void BuildInitData()
