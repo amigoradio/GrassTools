@@ -16,13 +16,13 @@ public class GrassGlobalSetting : ScriptableObject
     public float density = 0.5f;
     //草种植的层
     public LayerMask hitMask = 1;
-    //草的层
+    //草的所属层
     public int grassLayer = 1;
     //草数据保存的目录
     public string grassDataPath = "Assets/GrassData/";
     //刷的草的父节点的名称
     public string grassRootName = "GrassRoot";
-    //草数据的后缀:场景名_GrassData.asset
+    //草数据的后缀:场景名_GrassData.asset 压缩成二进制文件后缀要改为bytes
     public string grassDataNameSuffix = "_GrassData.bytes";
 
 }
